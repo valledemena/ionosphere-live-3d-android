@@ -17,3 +17,4 @@ Response-from-GLM-2026-11-02
 ## Direct-source requirement (clarification from David)
 - There is no public web deployed. Mobile must behave like C++: self-contained with direct public calls; if web exists, it can be an auxiliary data source, but not a required dependency.
 
+
