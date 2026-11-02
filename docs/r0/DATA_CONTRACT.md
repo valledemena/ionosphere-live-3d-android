@@ -19,3 +19,4 @@ Reference APIs from web README:
 - /api/{ae,aurora,cme,dst,flares,ionosondes,lightning,msis,rbe,satellites,solar-image,space-weather,voyager,wSpr}
 
 Signature guard: keep `package.json` public (no secret).
+

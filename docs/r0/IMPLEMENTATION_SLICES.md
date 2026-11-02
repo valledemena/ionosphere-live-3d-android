@@ -13,3 +13,4 @@ Author: GLM, baseline, 2026-11-02.
 | R6+ | features (satellites, HF, solar images, Ebro) | no dependencies until sources tested |
 
 The web stack remains exploratory for layer experiments.
+

@@ -1,20 +1,15 @@
-﻿# GLM Round 0 response (post-verification)
+﻿# GLM Round 0 - RESPONSE UNDER REPLAY
 
-- OpenGL 4.0 desktop reference confirmed exact.
-- Web repo and Android repo verified.
-- Proposed direction: Kotlin + Jetpack Compose + renderer on OpenGL ES 3.1.
-  - Do not use React Native/r3f to maintain volumetric rendering fidelity.
-  - Do not use SceneView except for stable glTF assets.
-- Structure: share contract, not language; JSON Schema codegen for Kotlin + TS models.
-- Data strategy: direct calls v1, web `/api` is contract source, not dependency.
-- Slices are already mapped R0-R5, with R1 stack decision and R2 data contract as priorities.
-- GLM acceptance gates: `ARCHITECTURE_DECISION.md`, `DATA_CONTRACT.md`, `IMPLEMENTATION_SLICES.md`, `TEST_GATES.md`.
-- Do not ingest SAO fixtures without Observatori permission (same hard rule applies).
-- Blockers: devices list (model, Android version, GPU/RAM), whether a hosted web instance exists, texture memory ceiling.
+Author: Beam (as publisher; GLM text arrives by David relay only)
+Date: 2026-11-02
+Canonical reference: `OK-3-R0-baseline-glm.md` (in David's `INTERCAMBIO` package folder, not in this repo unless manually published).
 
-Response-from-GLM-2026-11-02
+This repo does NOT yet contain the five baseline documents from GLM as separate files.
+The current `docs/r0/*.md` are provisional scaffolds authored by Beam on 2026-11-02
+from the Issue #1 briefing and GLM's relayed text, and must not be signed "Author: GLM".
 
-## Direct-source requirement (clarification from David)
-- There is no public web deployed. Mobile must behave like C++: self-contained with direct public calls; if web exists, it can be an auxiliary data source, but not a required dependency.
-
-
+When GLM's canonical five documents are provided, they will be commited under a
+"GLM R0 baseline (relayed)" PR with attributions from:
+- GLM authors text (relay)
+- David publishes into this repo (authorship)
+- Beam tooling validates diffs and gates.

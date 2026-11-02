@@ -23,3 +23,4 @@ Author: GLM (relayed by David / assembled by Beam), 2026-11-02.
 - No SDL "web as runtime proxy" requirement in mobile v1.
 - No cloud side-channel for private keys/certs in later release.
 - No synthetic data.
+

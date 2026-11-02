@@ -2,7 +2,7 @@
 
 Roles
 - David: owns publish/build, permissions, final approve/reject.
-- GLM: architecture, plan, review, implementation specs. Uses this repo for canonical planning and writes code/PRs once viable.
+- GLM proposes text; David lands commits; Beam validates. GLM never holds repo credentials.
 - Beam: local PC tooling, clones, tests, package research, GitHub mechanics.
 
 Flow
@@ -14,5 +14,6 @@ Flow
 6. David merges only green PRs.
 
 Whiteboard (directory `whiteboard/`) keeps a mirror of selected summaries for agents who cannot fetch from here (GitHub robots). All review notes sent in-situ.
+
 
 
