@@ -1,8 +1,7 @@
 ﻿# r0 index
-
+- ARCHITECTURE_DECISION.md - GLM canonical
+- DATA_CONTRACT.md - GLM canonical
+- IMPLEMENTATION_SLICES.md - GLM canonical
+- TEST_GATES.md - GLM canonical
 - OWNERSHIP_AND_RELEASING.md - GLM canonical
-- TEST_GATES.md - GLM canonical (v1.1)
-- relay-primitive.md - GLM canonical (dual to docs)
-- ARCHITECTURE_DECISION.md - Beam provisional
-- DATA_CONTRACT.md - Beam provisional
-- IMPLEMENTATION_SLICES.md - Beam provisional
+- GLM_R0_RESPONSE.md - pending/substitutable
