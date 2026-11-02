@@ -1,0 +1,55 @@
+Ionosphere Live 3D — Android
+Copyright (C) 2026 David López / colaboradores
+Licencia del proyecto: GNU General Public License v3.0 (ver LICENSE)
+
+Este producto incluye software de terceros. Cada componente se usa bajo su
+propia licencia, listada a continuación. No se distribuye ningún asset gráfico,
+sonoro o de datos de terceros en este repositorio.
+
+-------------------------------------------------------------------------------
+COMPONENTES DE SOFTWARE
+-------------------------------------------------------------------------------
+
+1) AndroidX / Jetpack (core-ktx, activity-compose, lifecycle-runtime-compose,
+   Compose UI, Material 3)
+   Titular: The Android Open Source Project
+   Licencia: Apache License 2.0
+   https://www.apache.org/licenses/LICENSE-2.0
+
+2) Kotlin Standard Library y Kotlin Gradle Plugin
+   Titular: JetBrains s.r.o.
+   Licencia: Apache License 2.0
+   https://www.apache.org/licenses/LICENSE-2.0
+
+3) Android Gradle Plugin
+   Titular: The Android Open Source Project
+   Licencia: Apache License 2.0
+   https://www.apache.org/licenses/LICENSE-2.0
+
+4) JUnit 4 (solo tests)
+   Titular: JUnit Team / Eclipse Foundation
+   Licencia: Eclipse Public License 1.0
+   https://www.eclipse.org/legal/epl-v10.html
+
+5) Gradle Wrapper
+   Titular: Gradle, Inc.
+   Licencia: Apache License 2.0
+   https://www.apache.org/licenses/LICENSE-2.0
+
+No se usa ninguna dependencia GPL-2-only. Si en el futuro se añade un componente
+fuera de la lista permisiva (Apache-2.0 / MIT / BSD / ISC), se declara aquí y se
+consulta antes de integrarlo (regla del PR de R1).
+
+-------------------------------------------------------------------------------
+ASSETS GRÁFICOS
+-------------------------------------------------------------------------------
+
+La textura del globo (2048×1024, equirectangular) se genera en tiempo de
+ejecución mediante código del propio proyecto
+(`core/PlaceholderGlobeTexture.kt`). No es un archivo de imagen distribuido ni
+proviene de un tercero: no hay asset que atribuir, y no representa geografía
+real. Queda cubierta por la GPL-3.0 de este repositorio.
+
+No se distribuyen fixtures, capturas ni datos del Observatori de l'Ebre (SAO /
+EB040). Esa regla es dura y viene del proyecto de escritorio: sin permiso escrito
+del Observatori, no se redistribuye nada suyo.

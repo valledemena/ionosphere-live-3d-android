@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Icono de R1: globo esquemático. No es el icono definitivo (R6). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <path
+        android:fillColor="#08131F"
+        android:pathData="M0,0h108v108h-108z" />
+
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M54,20a34,34 0 1,0 0,68a34,34 0 1,0 0,-68z"
+        android:strokeColor="#B9D4E8"
+        android:strokeWidth="2" />
+
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M54,20c-14,10 -14,58 0,68c14,-10 14,-58 0,-68z"
+        android:strokeColor="#6E93B0"
+        android:strokeWidth="1.5" />
+
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M20,54h68"
+        android:strokeColor="#B9D4E8"
+        android:strokeWidth="2" />
+
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M25,37h58M25,71h58"
+        android:strokeColor="#6E93B0"
+        android:strokeWidth="1.5" />
+</vector>
