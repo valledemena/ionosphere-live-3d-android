@@ -1,6 +1,6 @@
 ﻿# Architecture decision - Android baseline (R0)
 
-Author: GLM (relayed by David / assembled by Beam), 2026-11-02.
+Author: Beam (provisional draft; GLM canonical pending) (relayed by David / assembled by Beam), 2026-11-02.
 
 ## Core choice
 - **Native Kotlin + Jetpack Compose shell**.
@@ -23,4 +23,5 @@ Author: GLM (relayed by David / assembled by Beam), 2026-11-02.
 - No SDL "web as runtime proxy" requirement in mobile v1.
 - No cloud side-channel for private keys/certs in later release.
 - No synthetic data.
+
 

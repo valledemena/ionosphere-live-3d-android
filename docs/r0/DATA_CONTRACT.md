@@ -1,6 +1,6 @@
 ﻿# Data contract - Android baseline (R0)
 
-Author: GLM, baseline, the web `types.ts`/src/api are the reference contract.
+Author: Beam (provisional draft; GLM canonical pending), baseline, the web `types.ts`/src/api are the reference contract.
 
 - Direct public sources only (no API keys): during bench, we verified the API routes are
   public and provide real data outputs.
@@ -19,4 +19,5 @@ Reference APIs from web README:
 - /api/{ae,aurora,cme,dst,flares,ionosondes,lightning,msis,rbe,satellites,solar-image,space-weather,voyager,wSpr}
 
 Signature guard: keep `package.json` public (no secret).
+
 
