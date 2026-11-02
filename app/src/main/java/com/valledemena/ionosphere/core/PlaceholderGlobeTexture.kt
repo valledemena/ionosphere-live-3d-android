@@ -58,9 +58,30 @@ object PlaceholderGlobeTexture {
         return pixels
     }
 
+    /**
+     * Convierte ARGB8888 (formato de [generate]) a la secuencia de bytes que
+     * `glTexImage2D` espera para `GL_RGBA` y `GL_UNSIGNED_BYTE`: **R, G, B, A**,
+     * en ese orden y sin depender del endianness de la máquina.
+     *
+     * Escribir los `Int` directamente sobre un `IntBuffer` little-endian deja en
+     * memoria `B, G, R, A` y el driver lee el azul como rojo: el globo sale
+     * rojizo. Este es el único punto donde se decide el orden de canales, y por
+     * eso está aquí, en código puro, con test propio.
+     */
+    fun toRgbaBytes(pixels: IntArray): ByteArray {
+        val out = ByteArray(pixels.size * 4)
+        var i = 0
+        for (argb in pixels) {
+            out[i++] = ((argb shr 16) and 0xFF).toByte()   // R
+            out[i++] = ((argb shr 8) and 0xFF).toByte()    // G
+            out[i++] = (argb and 0xFF).toByte()            // B
+            out[i++] = ((argb ushr 24) and 0xFF).toByte()  // A
+        }
+        return out
+    }
+
     /** Degradado por latitud: azul profundo en el ecuador, gris azulado en los polos. */
-    internal fun oceanColor(latitude: Float): Int {
-        val t = (Math.abs(latitude) / 90f).coerceIn(0f, 1f)
+    internal fun oceanColor(latitude: Float): Int {        val t = (Math.abs(latitude) / 90f).coerceIn(0f, 1f)
         val r = lerp(0x0A, 0x8A, t).toInt()
         val g = lerp(0x2A, 0x9E, t).toInt()
         val b = lerp(0x4A, 0xBC, t).toInt()

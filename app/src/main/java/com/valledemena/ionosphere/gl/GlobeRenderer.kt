@@ -154,10 +154,10 @@ class GlobeRenderer : GLSurfaceView.Renderer {
 
     private fun uploadTexture(width: Int, height: Int): Int {
         val pixels = PlaceholderGlobeTexture.generate(width, height)
-        val buffer = ByteBuffer.allocateDirect(pixels.size * 4)
+        val bytes = PlaceholderGlobeTexture.toRgbaBytes(pixels)
+        val buffer = ByteBuffer.allocateDirect(bytes.size)
             .order(ByteOrder.nativeOrder())
-            .asIntBuffer()
-        buffer.put(pixels)
+            .put(bytes)
         buffer.position(0)
 
         val textures = IntArray(1)
