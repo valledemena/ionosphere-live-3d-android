@@ -1,49 +1,40 @@
 # TASKS
 
-## Estado de R0 (2026-11-02)
+## R0 — cerrado (2026-11-02)
 
-R0 cierra cuando el gate SHA256 de los 8 artefactos canónicos esté completo.
-Estado actual: **5/8** (`docs/r0/README.md`).
+Gate SHA256 **8/8**: los cinco documentos de baseline más `GLM_R0_RESPONSE`, el
+comentario del Issue #1 y el `relay-primitive` están publicados y verificados
+byte a byte. Tabla completa y método de verificación: `docs/r0/README.md`.
 
-Bloqueado en un único punto: los tres textos canónicos
-`ARCHITECTURE_DECISION.md`, `DATA_CONTRACT.md` e `IMPLEMENTATION_SLICES.md`
-no han llegado a este equipo como ficheros, así que no se pueden publicar
-byte a byte. Hasta que lleguen, esas rutas quedan vacías en `docs/r0/`.
+Ningún artefacto de este repo declara autoría de GLM sin coincidir con su hash.
+Ese es el criterio, y no hay otro.
 
-No queda ninguna acción pendiente de Beam en R0 aparte de publicar esos tres
-ficheros en cuanto existan. El comentario del Issue #1 ya está publicado
-(id `6577699347`) y el resto de canónicos están verificados por hash.
+## Fases (fuente: `docs/r0/IMPLEMENTATION_SLICES.md`, GLM)
 
-## Mapa canónico R0–R6
+Este fichero no resume el contenido de ese documento: lo referencia. El detalle
+de alcance y DoD de cada fase vive allí, y cualquier discrepancia la gana el
+documento canónico.
 
-Fuente: `IMPLEMENTATION_SLICES.md` (GLM, pendiente de publicación). Los nombres
-de las fases están citados literalmente por GLM en el Issue #1 y en el acta
-`OK-3-R0-verificacion-5bdf689.md` §3; el detalle de alcance de cada fase vive en
-ese documento, que aún no está en el repo. No se rellena aquí para no inventar
-contenido bajo autoría ajena.
+| Fase | Título canónico | Estado |
+|---|---|---|
+| R0 | Baseline | **cerrado** |
+| R1 | Esqueleto + CI | siguiente — Issue #2 |
+| R2 | Núcleo de datos (contrato v1) | pendiente |
+| R3 | Escena v1 (lenguaje visual) | pendiente |
+| R4 | Tiempo y profundidad | pendiente |
+| R5 | Cielo vivo | pendiente |
+| R6 | Release | pendiente |
 
-- **R0** — Baseline
-- **R1** — Esqueleto + CI
-- **R2** — Núcleo de datos
-- **R3** — Escena v1
-- **R4** — Tiempo y profundidad
-- **R5** — Cielo vivo
-- **R6** — Release
+Mínimo usable declarado por GLM: **R1 + R2** (globo + foF2/Kp/Dst reales con
+degradación honesta). Replay, raymarch, satélites, WSPR y magnetosfera esperan a
+R3–R5.
 
-Mínimo usable declarado por GLM: **R1 + R2**.
-Replay, raymarch, satélites y WSPR esperan a R3–R5.
+## Regla transversal (GLM, `IMPLEMENTATION_SLICES.md`)
 
-## Alcance de R1 (citado por GLM, Issue #1)
-
-Proyecto Gradle KTS, app Compose vacía, `GLSurfaceView` con globo texturizado
-(tier medium), GitHub Actions con `assembleDebug` + `unitTest` + `lint`
-bloqueante en cada PR, NOTICE de terceros. **Sin código de red en R1.**
-
-DoD: CI verde; APK instalado en el dispositivo de referencia con el globo
-girando a FPS estables; árbol del repo = estructura aprobada; revisión del diff
-completo por GLM antes del merge; merge solo David.
+Cada slice = un PR pequeño, revisado hunk-a-hunk por GLM, con CI verde y gate de
+dispositivo de David antes del merge. Merge: solo David.
 
 ## Gate de dispositivo
 
 Xiaomi Mi 10 Lite 5G — Android 11 (API 30), Snapdragon 765G,
-Adreno 620 (GLES 3.2), 6 GB RAM.
+Adreno 620 (GLES 3.2), 6 GB RAM. Detalle en `docs/r0/TEST_GATES.md` v1.1.
