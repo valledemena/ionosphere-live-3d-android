@@ -1,11 +1,51 @@
 package com.valledemena.ionosphere.data.model
 
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class SpaceWeatherDataSerdeTest {
 
+    @Test
+    fun `wind sin t rechazada`() {
+        val json = """
+            { "updated":1,"utc":"u","kp":{"now":1,"gScale":0,"series":[],"source":"s"},
+              "f107":{"now":1,"series":[],"source":"s"},
+              "wind":{"speed":1,"bt":2,"bz":3,"bx":4,"density":5,"source":"s"},
+              "mag":{"series":[],"source":"s"}, "xray":{"now":1,"class":"B","series":[],"seriesDay":[],"source":"s"},
+              "protons":{"now":0,"series":[],"satellite":18,"source":"s"}, "sunspots":{"regions":[],"source":"s"},
+              "forecast":{"maxKp":null,"note":"n","source":"s"} }
+        """.trimIndent()
+        assertTrue(Json.runCatching { Json.decodeFromString<SpaceWeatherData>(json) }.exceptionOrNull() is SerializationException)
+    }
+
+    @Test
+    fun `gScale no entero rechazado (schema integer)`() {
+        val json = """
+            { "updated":1,"utc":"u","kp":{"now":1,"gScale":0.5,"series":[],"source":"s"},
+              "f107":{"now":1,"series":[],"source":"s"},
+              "wind":{"speed":1,"bt":2,"bz":3,"bx":4,"density":5,"t":null,"source":"s"},
+              "mag":{"series":[],"source":"s"}, "xray":{"now":1,"class":"B","series":[],"seriesDay":[],"source":"s"},
+              "protons":{"now":0,"series":[],"satellite":18,"source":"s"}, "sunspots":{"regions":[],"source":"s"},
+              "forecast":{"maxKp":null,"note":"n","source":"s"} }
+        """.trimIndent()
+        assertTrue(Json.runCatching { Json.decodeFromString<SpaceWeatherData>(json) }.exceptionOrNull() is SerializationException)
+    }
+
+    @Test
+    fun `clave desconocida rechazada`() {
+        val json = """
+            { "updated":1,"utc":"u","kp":{"now":1,"gScale":0,"series":[],"source":"s","foo":1},
+              "f107":{"now":1,"series":[],"source":"s"},
+              "wind":{"speed":1,"bt":2,"bz":3,"bx":4,"density":5,"t":null,"source":"s"},
+              "mag":{"series":[],"source":"s"}, "xray":{"now":1,"class":"B","series":[],"seriesDay":[],"source":"s"},
+              "protons":{"now":0,"series":[],"satellite":18,"source":"s"}, "sunspots":{"regions":[],"source":"s"},
+              "forecast":{"maxKp":null,"note":"n","source":"s"} }
+        """.trimIndent()
+        assertTrue(Json.runCatching { Json.decodeFromString<SpaceWeatherData>(json) }.exceptionOrNull() is SerializationException)
+    }
     @Test
     fun `round-trip de un payload minimo`() {
         val json = """
