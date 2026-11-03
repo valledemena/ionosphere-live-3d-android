@@ -14,7 +14,7 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["code", "name", "lat", "lon", "history", "stale"],
+        "required": ["code", "name", "lat", "lon", "foF2", "muf3000", "history", "foE", "foF1", "hmF2", "B0", "B1", "stale"],
         "additionalProperties": false,
         "properties": {
           "code": { "type": "string" },

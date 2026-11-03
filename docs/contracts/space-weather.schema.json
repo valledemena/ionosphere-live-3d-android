@@ -14,7 +14,7 @@
       "additionalProperties": false,
       "properties": {
         "now": { "type": "number" },
-        "gScale": { "type": "number" },
+        "gScale": { "type": "integer" },
         "source": { "type": "string" },
         "series": {
           "type": "array",
@@ -47,7 +47,7 @@
     },
     "wind": {
       "type": "object",
-      "required": ["speed", "bt", "bz", "bx", "density", "source"],
+      "required": ["speed", "bt", "bz", "bx", "density", "t", "source"],
       "additionalProperties": false,
       "properties": {
         "speed": { "type": "number" },

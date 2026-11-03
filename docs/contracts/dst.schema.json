@@ -24,7 +24,7 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id"],
+        "required": ["id", "start", "kpMax", "link"],
         "additionalProperties": false,
         "properties": {
           "id": { "type": "string" },

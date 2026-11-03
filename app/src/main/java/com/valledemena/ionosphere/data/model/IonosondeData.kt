@@ -17,11 +17,11 @@ data class IonosondeStation(
     val foF2: Double?,
     val muf3000: Double?,
     val history: List<StationHistoryPoint>,
-    val foE: Double? = null,
-    val foF1: Double? = null,
-    val hmF2: Double? = null,
-    val B0: Double? = null,
-    val B1: Double? = null,
+    val foE: Double?,
+    val foF1: Double?,
+    val hmF2: Double?,
+    val B0: Double?,
+    val B1: Double?,
     val stale: Boolean,
 )
 
