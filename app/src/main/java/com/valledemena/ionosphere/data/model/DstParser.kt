@@ -48,8 +48,16 @@ object DstParser {
                 fun str(key: String): String? = (r[key] as? JsonPrimitive)?.contentOrNull
                 fun ms(s: String?): Long? {
                     if (s == null) return null
-                    val t = java.util.Date.parse(if (s.length == 16) "$s:00Z" else s)
-                    return if (t <= 0) null else t.toLong()
+                    val candidate = when {
+                        s.length == 16 -> "$s:00Z"
+                        s.length == 17 && s.endsWith("Z") -> s.dropLast(1) + ":00Z"
+                        else -> s
+                    }
+                    return try {
+                        java.time.Instant.parse(candidate).toEpochMilli()
+                    } catch (e: Exception) {
+                        null
+                    }
                 }
                 fun kpMax(obj: JsonObject): Double? {
                     val idx = obj["allKpIndex"] as? JsonArray ?: return null

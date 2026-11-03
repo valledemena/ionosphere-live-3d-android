@@ -47,9 +47,9 @@ class DstAdapter(
             val end = now + 24L * 60L * 60L * 1000L
             val gstUrl = "https://ccmc.gsfc.nasa.gov/DONKI-API/get/GST?startDate=${fmt(now - 30L * 24 * 3600 * 1000)}&endDate=${fmt(end)}"
 
-            val dstTxt = http.get(dstUrl).body
-            val dstPrevTxt = http.get(prevUrl).body
-            val gstTxt = http.get(gstUrl).body
+            val dstTxt = http.get(dstUrl).let { if (it.ok) it.body else null }
+            val dstPrevTxt = http.get(prevUrl).let { if (it.ok) it.body else null }
+            val gstTxt = http.get(gstUrl).let { if (it.ok) it.body else null }
 
             val pts = mutableListOf<DstPointKt>()
             if (dstTxt != null) pts.addAll(DstParser.parseDstWdc(dstTxt, y, m).map { DstPointKt(it.t, it.dst) })
