@@ -1,0 +1,159 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/valledemena/ionosphere-live-3d-android/docs/contracts/space-weather.schema.json",
+  "title": "SpaceWeatherData (mirror of web SpaceWeatherData)",
+  "type": "object",
+  "required": ["updated", "utc", "kp", "f107", "wind", "mag", "xray", "protons", "sunspots", "forecast"],
+  "additionalProperties": false,
+  "properties": {
+    "updated": { "type": "integer" },
+    "utc": { "type": "string" },
+    "kp": {
+      "type": "object",
+      "required": ["now", "gScale", "series", "source"],
+      "additionalProperties": false,
+      "properties": {
+        "now": { "type": "number" },
+        "gScale": { "type": "number" },
+        "source": { "type": "string" },
+        "series": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["t", "kp"],
+            "additionalProperties": false,
+            "properties": { "t": { "type": "integer" }, "kp": { "type": "number" } }
+          }
+        }
+      }
+    },
+    "f107": {
+      "type": "object",
+      "required": ["now", "series", "source"],
+      "additionalProperties": false,
+      "properties": {
+        "now": { "type": "number" },
+        "source": { "type": "string" },
+        "series": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["t", "f"],
+            "additionalProperties": false,
+            "properties": { "t": { "type": "integer" }, "f": { "type": "number" } }
+          }
+        }
+      }
+    },
+    "wind": {
+      "type": "object",
+      "required": ["speed", "bt", "bz", "bx", "density", "source"],
+      "additionalProperties": false,
+      "properties": {
+        "speed": { "type": "number" },
+        "bt": { "type": "number" },
+        "bz": { "type": "number" },
+        "bx": { "type": "number" },
+        "density": { "type": "number" },
+        "t": { "oneOf": [ { "type": "null" }, { "type": "string" } ] },
+        "source": { "type": "string" }
+      }
+    },
+    "mag": {
+      "type": "object",
+      "required": ["series", "source"],
+      "additionalProperties": false,
+      "properties": {
+        "source": { "type": "string" },
+        "series": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["t", "bx"],
+            "additionalProperties": false,
+            "properties": { "t": { "type": "integer" }, "bx": { "type": "number" } }
+          }
+        }
+      }
+    },
+    "xray": {
+      "type": "object",
+      "required": ["now", "class", "series", "seriesDay", "source"],
+      "additionalProperties": false,
+      "properties": {
+        "now": { "type": "number" },
+        "class": { "type": "string" },
+        "source": { "type": "string" },
+        "series": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["t", "f"],
+            "additionalProperties": false,
+            "properties": { "t": { "type": "integer" }, "f": { "type": "number" } }
+          }
+        },
+        "seriesDay": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["t", "f"],
+            "additionalProperties": false,
+            "properties": { "t": { "type": "integer" }, "f": { "type": "number" } }
+          }
+        }
+      }
+    },
+    "protons": {
+      "type": "object",
+      "required": ["now", "series", "satellite", "source"],
+      "additionalProperties": false,
+      "properties": {
+        "now": { "type": "number" },
+        "satellite": { "type": "integer" },
+        "source": { "type": "string" },
+        "series": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["t", "f"],
+            "additionalProperties": false,
+            "properties": { "t": { "type": "integer" }, "f": { "type": "number" } }
+          }
+        }
+      }
+    },
+    "sunspots": {
+      "type": "object",
+      "required": ["regions", "source"],
+      "additionalProperties": false,
+      "properties": {
+        "source": { "type": "string" },
+        "regions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["region", "lat", "lon", "loc"],
+            "additionalProperties": false,
+            "properties": {
+              "region": { "type": "integer" },
+              "lat": { "type": "number" },
+              "lon": { "type": "number" },
+              "loc": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "forecast": {
+      "type": "object",
+      "required": ["maxKp", "note", "source"],
+      "additionalProperties": false,
+      "properties": {
+        "maxKp": { "oneOf": [ { "type": "null" }, { "type": "number" } ] },
+        "note": { "type": "string" },
+        "source": { "type": "string" }
+      }
+    }
+  }
+}

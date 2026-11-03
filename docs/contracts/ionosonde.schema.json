@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/valledemena/ionosphere-live-3d-android/docs/contracts/ionosonde.schema.json",
+  "title": "IonosondeData (mirror of web IonosondeData)",
+  "type": "object",
+  "required": ["updated", "stations", "total", "catalogSize", "source"],
+  "additionalProperties": false,
+  "properties": {
+    "updated": { "type": "integer" },
+    "total": { "type": "integer" },
+    "catalogSize": { "type": "integer" },
+    "source": { "type": "string" },
+    "stations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["code", "name", "lat", "lon", "history", "stale"],
+        "additionalProperties": false,
+        "properties": {
+          "code": { "type": "string" },
+          "name": { "type": "string" },
+          "lat": { "type": "number" },
+          "lon": { "type": "number" },
+          "foF2": { "oneOf": [ { "type": "null" }, { "type": "number" } ] },
+          "muf3000": { "oneOf": [ { "type": "null" }, { "type": "number" } ] },
+          "foE": { "oneOf": [ { "type": "null" }, { "type": "number" } ] },
+          "foF1": { "oneOf": [ { "type": "null" }, { "type": "number" } ] },
+          "hmF2": { "oneOf": [ { "type": "null" }, { "type": "number" } ] },
+          "B0": { "oneOf": [ { "type": "null" }, { "type": "number" } ] },
+          "B1": { "oneOf": [ { "type": "null" }, { "type": "number" } ] },
+          "stale": { "type": "boolean" },
+          "history": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["t", "foF2"],
+              "additionalProperties": false,
+              "properties": {
+                "t": { "type": "string" },
+                "foF2": { "type": "number" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
