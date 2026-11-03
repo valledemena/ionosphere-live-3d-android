@@ -30,8 +30,12 @@ class AuroraAdapterTest {
             is com.valledemena.ionosphere.data.net.Outcome.Live -> {
                 val data: AuroraData = r.value
                 assertEquals("2026-11-03T00:00Z", data.observationTime)
-                assertTrue("debe haber al menos una celda auroral", data.cells.isNotEmpty())
-                assertTrue(data.cells.all { it.p > 8 })
+                val expected = setOf(
+                    com.valledemena.ionosphere.data.model.AuroraCell(60.0, 0.0, 50),
+                    com.valledemena.ionosphere.data.model.AuroraCell(60.0, 2.0, 40),
+                    com.valledemena.ionosphere.data.model.AuroraCell(62.0, 2.0, 80),
+                )
+                assertEquals(expected, data.cells.toSet())
             }
             else -> throw AssertionError("esperaba Live, obtuvo $r")
         }
