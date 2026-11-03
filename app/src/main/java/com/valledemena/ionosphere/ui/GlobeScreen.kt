@@ -17,7 +17,11 @@ import com.valledemena.ionosphere.gl.GlobeSurfaceView
 /**
  * Globo a pantalla completa, sin HUD (R3).
  *
- * El ciclo de vida manda: `ON_START` empieza a pedir frames, `ON_STOP` los corta.
+ * El ciclo de vida manda:
+ *  - `ON_RESUME` reanuda el contexto GL; `ON_PAUSE` lo suspende
+ *    (con `preserveEGLContextOnPause` el contexto sobrevive al background).
+ *  - `ON_START` empieza a pedir frames a la rejilla de vsync; `ON_STOP` los
+ *    corta.
  * Nada se dibuja con la app en background, y no hay ningún hilo propio: el
  * `Choreographer` del `GlobeSurfaceView` es el único que pide frames.
  */
@@ -33,18 +37,24 @@ fun GlobeScreen(modifier: Modifier = Modifier) {
         } else {
             val observer = LifecycleEventObserver { _, event ->
                 when (event) {
+                    Lifecycle.Event.ON_RESUME -> surfaceView.onResume()
+                    Lifecycle.Event.ON_PAUSE -> surfaceView.onPause()
                     Lifecycle.Event.ON_START -> surfaceView.start()
                     Lifecycle.Event.ON_STOP -> surfaceView.stop()
                     else -> Unit
                 }
             }
             lifecycleOwner.lifecycle.addObserver(observer)
-            if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+            if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+                surfaceView.onResume()
+                surfaceView.start()
+            } else if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
                 surfaceView.start()
             }
             onDispose {
                 lifecycleOwner.lifecycle.removeObserver(observer)
                 surfaceView.stop()
+                surfaceView.onPause()
             }
         }
     }

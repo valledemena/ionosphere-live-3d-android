@@ -5,7 +5,7 @@ import android.opengl.GLSurfaceView
 import android.util.AttributeSet
 import android.util.Log
 import android.view.Choreographer
-import com.valledemena.ionosphere.core.Rotation
+import com.valledemena.ionosphere.core.FramePacer
 import javax.microedition.khronos.egl.EGL10
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.egl.EGLContext
@@ -30,11 +30,13 @@ class GlobeSurfaceView @JvmOverloads constructor(
     private val choreographer = Choreographer.getInstance()
     private var running = false
 
+    private val pacer = FramePacer()
+
     private val frameCallback = object : Choreographer.FrameCallback {
         override fun doFrame(frameTimeNanos: Long) {
             if (!running) return
-            requestRender()
-            choreographer.postFrameCallbackDelayed(this, Rotation.frameIntervalMs())
+            if (pacer.onVsync(frameTimeNanos)) requestRender()
+            choreographer.postFrameCallback(this)  // sin delay: en la rejilla de vsync
         }
     }
 
@@ -50,6 +52,7 @@ class GlobeSurfaceView @JvmOverloads constructor(
     fun start() {
         if (running) return
         running = true
+        pacer.reset()
         choreographer.postFrameCallback(frameCallback)
     }
 

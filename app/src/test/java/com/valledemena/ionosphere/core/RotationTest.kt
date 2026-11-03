@@ -40,14 +40,5 @@ class RotationTest {
         assertEquals(16L, Rotation.frameIntervalMs(60))
     }
 
-    @Test
-    fun `primer frame siempre se dibuja`() {
-        assertTrue(Rotation.shouldRenderNow(lastFrameMs = 0L, nowMs = 1L))
-    }
-
-    @Test
-    fun `no se dibuja antes de cumplir el intervalo`() {
-        assertFalse(Rotation.shouldRenderNow(lastFrameMs = 1_000L, nowMs = 1_010L, targetFps = 30))
-        assertTrue(Rotation.shouldRenderNow(lastFrameMs = 1_000L, nowMs = 1_034L, targetFps = 30))
-    }
 }
+

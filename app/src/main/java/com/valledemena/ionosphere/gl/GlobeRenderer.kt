@@ -8,6 +8,7 @@ import android.os.SystemClock
 import android.util.Log
 import com.valledemena.ionosphere.core.PlaceholderGlobeTexture
 import com.valledemena.ionosphere.core.Rotation
+import com.valledemena.ionosphere.core.RotationClock
 import com.valledemena.ionosphere.core.SphereMesh
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -46,7 +47,8 @@ class GlobeRenderer : GLSurfaceView.Renderer {
     private val viewProjection = FloatArray(16)
     private val mvp = FloatArray(16)
 
-    private var startedAtMs = 0L
+private val clock = RotationClock()
+
     private var frameCount = 0
     private var textureWidth = 0
     private var textureHeight = 0
@@ -71,12 +73,11 @@ class GlobeRenderer : GLSurfaceView.Renderer {
         uploadMesh()
         textureId = uploadTexture(PlaceholderGlobeTexture.TIER_MEDIUM_WIDTH, PlaceholderGlobeTexture.TIER_MEDIUM_HEIGHT)
 
-        startedAtMs = SystemClock.uptimeMillis()
-        frameCount = 0
+        clock.onSurfaceCreated(SystemClock.uptimeMillis())
 
         Log.i(
             TAG,
-            "Superficie creada: ${mesh.vertexCount} vértices, ${mesh.triangleCount} triángulos, " +
+            "Superficie creada (creación nº ${clock.surfaceCreations}): ${mesh.vertexCount} vértices, ${mesh.triangleCount} triángulos, " +
                 "textura ${textureWidth}x${textureHeight}, GL ${GLES20.glGetString(GLES20.GL_VERSION)}",
         )
     }
@@ -92,8 +93,7 @@ class GlobeRenderer : GLSurfaceView.Renderer {
     override fun onDrawFrame(gl: GL10?) {
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
 
-        val elapsed = SystemClock.uptimeMillis() - startedAtMs
-        val angle = Rotation.angleDegrees(elapsed)
+        val angle = clock.angleAt(SystemClock.uptimeMillis())
 
         Matrix.setIdentityM(model, 0)
         Matrix.rotateM(model, 0, -23.4f, 0f, 0f, 1f)   // inclinación axial declarada
