@@ -45,9 +45,19 @@ class DstAdapter(
             val end = now + 24L * 60L * 60L * 1000L
             val gstUrl = "https://ccmc.gsfc.nasa.gov/DONKI-API/get/GST?startDate=${fmt(now - 30L * 24 * 3600 * 1000)}&endDate=${fmt(end)}"
 
-            val dstTxt = http.get(dstUrl).let { if (it.ok) it.body else null }
-            val dstPrevTxt = http.get(prevUrl).let { if (it.ok) it.body else null }
-            val gstTxt = http.get(gstUrl).let { if (it.ok) it.body else null }
+            var transportError: Throwable? = null
+            suspend fun fetchText(url: String): String? = try {
+                val r = http.get(url)
+                if (r.ok) r.body else null
+            } catch (e: Throwable) {
+                transportError = e
+                null
+            }
+
+            val dstTxt = fetchText(dstUrl)
+            val dstPrevTxt = fetchText(prevUrl)
+            val gstTxt = fetchText(gstUrl)
+
 
             val pts = mutableListOf<DstPointKt>()
             if (dstTxt != null) pts.addAll(DstParser.parseDstWdc(dstTxt, y, m).map { DstPointKt(it.t, it.dst) })
@@ -71,6 +81,10 @@ class DstAdapter(
                 checkedAt = now,
                 source = if (dstTxt != null) "Kyoto WDC Dst realtime (live)" else "unavailable",
             )
+            if (transportError != null && dstTxt == null && dstPrevTxt == null && win.isEmpty()) {
+                if (cached != null) return Outcome.Cached(cached.value, cached.source, cached.fetchedAtMs, cached.stale, transportError)
+                return Outcome.Failed(transportError)
+            }
             cache?.store("dst", payload.source, Json.encodeToString(DstData.serializer(), payload), now)
             Outcome.Live(payload, payload.source, now)
         } catch (e: Throwable) {
