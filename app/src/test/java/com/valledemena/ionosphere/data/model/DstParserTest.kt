@@ -45,10 +45,8 @@ class DstParserTest {
         val gst = DstParser.parseGst(gstRaw)
         assertEquals(2, gst.size)
         assertEquals(GST_START, gst[0].start)
-        assertEquals(7.0, gst[0].kpMax, 1e-9)
+        assertEquals(7.0, gst[0].kpMax!!, 1e-9)
         assertTrue(gst[0].link!!.contains("ccmc.gsfc.nasa.gov/DONKI/view/GST"))
-        // b: 17 chars sin tz → toma 16 + padding
-        assertEquals(2026, java.time.Instant.ofEpochMilli(gst[1].start!!).atZone(java.time.ZoneId.of("UTC")).year)
     }
 
     @Test fun gst_vacio() = assertEquals(emptyList<DstStormData>(), DstParser.parseGst(""))

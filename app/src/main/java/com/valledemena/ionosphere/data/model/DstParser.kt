@@ -50,14 +50,10 @@ object DstParser {
                     if (s == null) return null
                     val candidate = when {
                         s.length == 16 -> "$s:00Z"
-                        s.length == 17 && s.endsWith("Z") -> s.dropLast(1) + ":00Z"
-                        else -> s
+                        s.endsWith("Z") -> s
+                        else -> "$s" + "Z"
                     }
-                    return try {
-                        java.time.Instant.parse(candidate).toEpochMilli()
-                    } catch (e: Exception) {
-                        null
-                    }
+                    return try { java.time.Instant.parse(candidate).toEpochMilli() } catch (e: Exception) { null }
                 }
                 fun kpMax(obj: JsonObject): Double? {
                     val idx = obj["allKpIndex"] as? JsonArray ?: return null
