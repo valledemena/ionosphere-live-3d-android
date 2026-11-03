@@ -12,13 +12,12 @@ import java.util.TimeZone
 /**
  * Parseres puros de los payloads Dst — port field-by-field de `src/lib/iono/dst.ts`
  * (web R0, pin `aeeea3862315b6ba092318b9bbfb2f48e47bb05a`).
- * Los campos fijos del upstream se **pegan** al ocupar 4 caracteres
- * (buffer placeholder de días futuros: `0` seguido de `9999`×26). Así,
- * `toIntOrNull` diverge de `parseInt` cuando el parser llega a ese blob: la
- * web emite `dst = -1399999…`, este parser lo salta (más seguro para consumo).
- * En una ventana de un día **real** (≥24 tokens separados por espacio) la web y
- * este parser coinciden. Se registra como desviación port field-by-field, no
- * como corrección de estilo.
+ * Port field-by-field. Desviación documentada (recibo):
+ * - Días completos (>=24 tokens) de tormentas intensas (Dst <= -100) pegán
+ *   el Kp/los valores ocupando 4 chars contiguos; web emite prefijo, Kotlin
+ *   lo salta (más seguro). Se registra como divergencia consciente.
+ * - Días parciales (<24 tokens) y placeholders 9999 se descartan en ambas.
+ * Sin red ni IO: fixtures dorados validan.
  */
 
 object DstParser {

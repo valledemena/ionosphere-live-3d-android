@@ -6,3 +6,5 @@ src/app/api/space-weather/route.ts                               de56407f63f7b44
 src/app/api/ionosondes/route.ts                                  f62223673cb6e12ce9cddc72521979633ee5face
 src/app/api/aurora/route.ts                                      469af433c80c5894670d84714aace7fca1db8374
 src/app/api/dst/route.ts                                         fe1c1cbba879dc7063b742e669e37d3009196b95
+src/lib/iono/dst.ts                                              bddc0e9b9755f64b28c6b2b04e8c9e4a55d9d809
+src/lib/iono/dst.test.ts                                         5c05d9c955cc065843b7053e4bf660401cbd545e
