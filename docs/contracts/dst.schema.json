@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/valledemena/ionosphere-live-3d-android/docs/contracts/dst.schema.json",
+  "title": "DstData (mirror of web DstData)",
+  "type": "object",
+  "required": ["now", "min7d", "series", "count", "gst", "checkedAt", "source"],
+  "additionalProperties": false,
+  "properties": {
+    "now": { "type": "number" },
+    "min7d": { "type": "number" },
+    "count": { "type": "integer" },
+    "checkedAt": { "type": "integer" },
+    "source": { "type": "string" },
+    "series": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["t", "dst"],
+        "additionalProperties": false,
+        "properties": { "t": { "type": "integer" }, "dst": { "type": "number" } }
+      }
+    },
+    "gst": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "start", "kpMax", "link"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string" },
+          "start": { "oneOf": [ { "type": "null" }, { "type": "integer" } ] },
+          "kpMax": { "oneOf": [ { "type": "null" }, { "type": "number" } ] },
+          "link": { "oneOf": [ { "type": "null" }, { "type": "string" } ] }
+        }
+      }
+    }
+  }
+}

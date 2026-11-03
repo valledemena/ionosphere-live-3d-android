@@ -1,0 +1,8 @@
+# Pin de R2 (metadata de staging, no canonico)
+# Referencia de normalizacion diff-a-diff: docs/r0/IMPLEMENTATION_SLICES.md lineas 16-18 + DATA_CONTRACT.
+# Web main = aeeea3862315b6ba092318b9bbfb2f48e47bb05a (verificado por GLM el 2026-11-03)
+src/components/ionosphere/types.ts                                455fe79a585a1dd1a26fcee35eadfdc2671c23f5
+src/app/api/space-weather/route.ts                               de56407f63f7b4458f57c5481a76ab41fb0206b0
+src/app/api/ionosondes/route.ts                                  f62223673cb6e12ce9cddc72521979633ee5face
+src/app/api/aurora/route.ts                                      469af433c80c5894670d84714aace7fca1db8374
+src/app/api/dst/route.ts                                         fe1c1cbba879dc7063b742e669e37d3009196b95
