@@ -14,8 +14,6 @@ import java.util.Calendar
 import java.util.Locale
 import java.util.TimeZone
 
-private const val TTL_DST_MS = 15 * 60_000L
-
 class DstAdapter(
     private val http: HttpClient,
     private val cache: NetCache? = null,
