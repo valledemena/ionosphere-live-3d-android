@@ -2,18 +2,13 @@ package com.valledemena.ionosphere.data.source
 
 import com.valledemena.ionosphere.data.DataTtl
 import com.valledemena.ionosphere.data.model.DstData
+import com.valledemena.ionosphere.data.model.DstParser
 import com.valledemena.ionosphere.data.model.DstSeriesPoint
 import com.valledemena.ionosphere.data.model.DstStormData
 import com.valledemena.ionosphere.data.net.HttpClient
 import com.valledemena.ionosphere.data.net.NetCache
 import com.valledemena.ionosphere.data.net.Outcome
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonPrimitive
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -50,18 +45,18 @@ class DstAdapter(
             val dstUrl = "https://wdc.kugi.kyoto-u.ac.jp/dst_realtime/presentmonth/dst$tag.for.request"
             val prevUrl = "https://wdc.kugi.kyoto-u.ac.jp/dst_realtime/${pm.first}${String.format(Locale.US, "%02d", pm.second)}/dst$ptag.for.request"
             val end = now + 24L * 60L * 60L * 1000L
-            val gstUrl = "https://ccmc.gsfc.nasa.gov/DONKI-API/get/GST?startDate=${fmt(now - 30L * 24 * 3600 * 1000, formatter)}&endDate=${fmt(end, formatter)}"
+            val gstUrl = "https://ccmc.gsfc.nasa.gov/DONKI-API/get/GST?startDate=${fmt(now - 30L * 24 * 3600 * 1000)}&endDate=${fmt(end)}"
 
             val dstTxt = http.get(dstUrl).body
             val dstPrevTxt = http.get(prevUrl).body
             val gstTxt = http.get(gstUrl).body
 
-            val pts = mutableListOf<DstPoint>()
-            if (dstTxt != null) pts.addAll(parseDstWdc(dstTxt, y, m))
-            if (dstPrevTxt != null) pts.addAll(parseDstWdc(dstPrevTxt, pm.first, pm.second))
+            val pts = mutableListOf<DstPointKt>()
+            if (dstTxt != null) pts.addAll(DstParser.parseDstWdc(dstTxt, y, m).map { DstPointKt(it.t, it.dst) })
+            if (dstPrevTxt != null) pts.addAll(DstParser.parseDstWdc(dstPrevTxt, pm.first, pm.second).map { DstPointKt(it.t, it.dst) })
             pts.sortBy { it.t }
 
-            val gst = gstTxt?.let { parseGstSafe(it) } ?: emptyList()
+            val gst = gstTxt?.let { DstParser.parseGst(it) } ?: emptyList()
 
             val cut = now - 45 * 24 * 3600 * 1000L
             val cut7 = now - 7 * 24 * 3600 * 1000L
@@ -88,69 +83,7 @@ class DstAdapter(
 
     private data class CachedParsedDst(val value: DstData, val source: String, val fetchedAtMs: Long, val stale: Boolean)
 
-    private fun fmt(ms: Long, df: SimpleDateFormat): String = df.format(java.util.Date(ms))
-
-    private fun parseDstWdc(text: String, year: Int, month: Int): List<DstPoint> {
-        val re = Regex("^DST\\d{4}\\*(\\d{2})\\S*\\s+(.*)$")
-        val out = mutableListOf<DstPoint>()
-        for (line in text.split("\n")) {
-            val m = re.find(line) ?: continue
-            val dd = m.groupValues[1].toIntOrNull() ?: continue
-            if (dd !in 1..31) continue
-            val vals = m.groupValues[2].trim().split(Regex("\\s+")).take(24)
-            if (vals.size < 24) continue
-            for (h in 0 until 24) {
-                val v = vals[h].toIntOrNull() ?: continue
-                val ms = dateMillis(year, month, dd, h)
-                out.add(DstPoint(ms, v.toDouble()))
-            }
-        }
-        return out.sortedBy { it.t }
-    }
-
-    private fun dateMillis(year: Int, month: Int, day: Int, hour: Int): Long {
-        val cal = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
-            set(year, month - 1, day, hour, 0, 0)
-            set(Calendar.MILLISECOND, 0)
-        }
-        return cal.timeInMillis
-    }
-
-    private fun parseGstSafe(raw: String): List<DstStormData> {
-        return try {
-            val arr = Json.parseToJsonElement(raw) as? JsonArray ?: return emptyList()
-            arr.mapNotNull { e ->
-                val obj = e as? JsonObject ?: return@mapNotNull null
-                fun str(key: String): String? {
-                    val p = obj[key] ?: return null
-                    return (p as? JsonPrimitive)?.contentOrNull
-                }
-                fun ms(s: String?): Long? {
-                    if (s == null) return null
-                    val t = java.util.Date.parse(if (s.length == 16) "$s:00Z" else s)
-                    return if (t <= 0) null else t.toLong()
-                }
-                fun kp(obj: JsonObject): Double? {
-                    val arr2 = obj["allKpIndex"] as? JsonArray ?: return null
-                    var out: Double? = null
-                    for (k in arr2) {
-                        val o = k as? JsonObject ?: continue
-                        val v = (o["kpIndex"] as? JsonPrimitive)?.content?.toDoubleOrNull()
-                        if (v != null && v.isFinite()) out = if (out == null) v else kotlin.math.max(out, v)
-                    }
-                    return out
-                }
-                DstStormData(
-                    id = str("gstID") ?: "",
-                    start = ms(str("startTime")),
-                    kpMax = kp(obj),
-                    link = str("link"),
-                )
-            }
-        } catch (e: Throwable) {
-            emptyList()
-        }
-    }
+    private fun fmt(ms: Long): String = formatter.format(java.util.Date(ms))
 }
 
-private data class DstPoint(val t: Long, val dst: Double)
+private data class DstPointKt(val t: Long, val dst: Double)
