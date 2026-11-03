@@ -31,8 +31,8 @@ class FileNetCache(private val directory: File) : NetCache {
     override suspend fun store(key: String, source: String, jsonPayload: String, fetchedAtMs: Long) {
         val f = file(key)
         f.parentFile?.mkdirs()
-        val envelope = "{\"fetchedAt\":$fetchedAtMs,\"source\":\"$source\",\"payload\":$jsonPayload}"
-        f.writeText(envelope)
+        val envelope = NetEnvelope(fetchedAt = fetchedAtMs, source = source, payload = Json.parseToJsonElement(jsonPayload))
+        f.writeText(Json.encodeToString(NetEnvelope.serializer(), envelope))
     }
     override suspend fun load(key: String): CacheHit? {
         val f = file(key)

@@ -1,9 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- R1 no usa red: no se declara INTERNET (ni ningún otro permiso). -->
-
-    <!-- Red -->
+    <!-- Permisos: INTERNET (R2) para adaptadores directos a upstreams publicos. -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 

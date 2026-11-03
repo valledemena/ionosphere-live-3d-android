@@ -44,7 +44,7 @@ class AuroraAdapter(
             cache?.store("aurora", parsed.source, stored, parsed.fetchedAtMs)
             Outcome.Live(parsed.value, parsed.source, parsed.fetchedAtMs)
         } catch (e: Throwable) {
-            if (cached != null) Outcome.Cached(cached.value, cached.source, cached.fetchedAtMs, true, e)
+            if (cached != null) Outcome.Cached(cached.value, cached.source, cached.fetchedAtMs, cached.stale, e)
             else Outcome.Failed(e)
         }
     }
