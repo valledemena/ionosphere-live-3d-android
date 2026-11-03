@@ -26,6 +26,4 @@ data class DstData(
     val gst: List<DstStormData>,
     val checkedAt: Long,
     val source: String,
-    val ageDays: Int,
-    val latestDate: String? = null,
 )

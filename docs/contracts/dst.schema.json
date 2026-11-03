@@ -3,7 +3,7 @@
   "$id": "https://github.com/valledemena/ionosphere-live-3d-android/docs/contracts/dst.schema.json",
   "title": "DstData (mirror of web DstData)",
   "type": "object",
-  "required": ["now", "min7d", "series", "count", "gst", "checkedAt", "source", "ageDays"],
+  "required": ["now", "min7d", "series", "count", "gst", "checkedAt", "source"],
   "additionalProperties": false,
   "properties": {
     "now": { "type": "number" },
@@ -11,8 +11,6 @@
     "count": { "type": "integer" },
     "checkedAt": { "type": "integer" },
     "source": { "type": "string" },
-    "ageDays": { "type": "integer" },
-    "latestDate": { "oneOf": [ { "type": "null" }, { "type": "string" } ] },
     "series": {
       "type": "array",
       "items": {
