@@ -9,13 +9,10 @@ import com.valledemena.ionosphere.data.net.HttpClient
 import com.valledemena.ionosphere.data.net.NetCache
 import com.valledemena.ionosphere.data.net.Outcome
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import java.text.SimpleDateFormat
-import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
-import java.util.concurrent.ConcurrentHashMap
 
 private const val URL_CATALOG = "https://lgdc.uml.edu/common/DIDBFastStationList?orderByField=ursiCode"
 private const val GETBEST = "https://lgdc.uml.edu/fastchar/getbest"
@@ -43,7 +40,7 @@ class IonosondeAdapter(
 
         return try {
             val meta = loadCatalog(now)
-            val extra = loadExtras(now, anchorStations).toMap()
+            val extra = loadExtras(now, anchorStations)
             val stationData = mutableListOf<IonosondeStation>()
             var anyFoRequestFailed = false
 
@@ -59,7 +56,7 @@ class IonosondeAdapter(
                         lon = info?.lon ?: 0.0,
                         foF2 = data.foF2,
                         muf3000 = data.muf3000,
-                        history = data.history.map { StationHistoryPoint(it.t, it.foF2) },
+                        history = data.history.map { StationHistoryPoint(it.t, it.foF2) }.takeLast(2500),
                         foE = ex["foE"] ?: data.foE,
                         foF1 = ex["foF1"] ?: data.foF1,
                         hmF2 = ex["hmF2"] ?: data.hmF2,
@@ -74,6 +71,12 @@ class IonosondeAdapter(
                 if (idx < stations.size - 1) delay(antiHerdDelayMs)
             }
 
+            // Degradacion inteligente: si ninguna estacion respondio, prefiere
+            // cache (vivo) sobre payload vacio.
+            if (anyFoRequestFailed && stationData.isEmpty() && cached != null) {
+                return Outcome.Cached(cached.first, cached.first.source, cached.first.updated, true)
+            }
+
             val data = IonosondeData(
                 updated = now,
                 stations = stationData,
@@ -81,10 +84,6 @@ class IonosondeAdapter(
                 catalogSize = meta.size,
                 source = if (stationData.isNotEmpty()) "GIRO DIDBase (live, kc2g failover reserved)" else "unavailable",
             )
-
-            if (anyFoRequestFailed && stationData.isEmpty() && cached != null) {
-                return Outcome.Cached(cached.first, cached.first.source, cached.first.updated, true)
-            }
 
             if (stationData.isNotEmpty()) {
                 cache?.store("ionosondes", data.source, Json.encodeToString(IonosondeData.serializer(), data), now)
@@ -102,7 +101,7 @@ class IonosondeAdapter(
     }
 
     private suspend fun fetchStation(code: String, now: Long): IonosondeParser.StationData? {
-        val from = now - DataTtl.IONOSONDES_DATA_MS.coerceAtLeast(1L) * (168 * 6) // 168h
+        val from = now - 168L * 60L * 60L * 1000L
         val fmt = SimpleDateFormat("yyyy.MM.dd'T'HH:mm:ss", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }
         val url = "$GETBEST?ursiCode=$code&charName=foF2&fromDate=${fmt.format(java.util.Date(from))}&toDate=${fmt.format(java.util.Date(now))}"
         val text = runCatching { http.get(url) }.getOrNull()?.let { if (it.ok) it.body else null }
@@ -112,10 +111,13 @@ class IonosondeAdapter(
 
     private suspend fun loadExtras(now: Long, anchors: Set<String>) =
         mutableMapOf<String, Map<String, Double?>>().apply {
+            val fmt = SimpleDateFormat("yyyy.MM.dd'T'HH:mm:ss", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }
+            val from = now - 65L * 60L * 1000L
             for (code in anchors) {
                 val anchorExtras = mutableMapOf<String, Double?>()
                 for (charName in ANCHOR_EXTRA_CHARS) {
-                    val txt = runCatching { http.get("$GETBEST?ursiCode=$code&charName=$charName&fromDate=now&toDate=now") }.getOrNull()?.let { if (it.ok) it.body else null }
+                    val url = "$GETBEST?ursiCode=$code&charName=$charName&fromDate=${fmt.format(java.util.Date(from))}&toDate=${fmt.format(java.util.Date(now))}"
+                    val txt = runCatching { http.get(url) }.getOrNull()?.let { if (it.ok) it.body else null }
                     if (txt == null || txt.contains("STATUS: ERROR")) anchorExtras[charName] = null
                     else anchorExtras[charName] = IonosondeParser.parseCharValue(txt)
                     delay(250)
