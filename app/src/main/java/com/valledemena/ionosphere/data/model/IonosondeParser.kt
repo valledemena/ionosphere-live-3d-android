@@ -10,10 +10,9 @@ package com.valledemena.ionosphere.data.model
  * debe ser licencia-declarada. SAO/EB040 (Observatorio del Ebro) está **prohibido**
  * — la regla dura del proyecto lo prohíbe en cualquier vía futura.
  *
- * Desviación registrada (familia H5): el upstream web usa `parseFloat`, mientras
- * este port usa `toDoubleOrNull` (estricto) para el extra parse de foE/foF1/etc.
- * (ambos los rechazan si inválidos; `parseFloat` práctica interminable);
- * documented.
+ * Desv. registrada (G5): web parseFloat acepta "3.5x" -> 3.5; Kotlin toDoubleOrNull
+ * devuelve null. Para inputs reales de GIRO (values multiples), este port escoge
+ * strictness y documenta la divergencia; fixtures se cuadran a `parseFloat`.
  */
 object IonosondeParser {
 
@@ -74,7 +73,7 @@ object IonosondeParser {
             }
             found
         }
-// we apply the 2500 cap here (web does it in the route; kept self-contained).
+        // we apply the 2500 cap here (web does it in the route; kept self-contained).
         return StationData(
             code = code,
             foF2 = foF2,
