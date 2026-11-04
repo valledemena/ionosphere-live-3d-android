@@ -74,7 +74,7 @@ object IonosondeParser {
             }
             found
         }
-// we apply the 2500 cap here (web does it in the route; kept self-contained).
+        // we apply the 2500 cap here (web does it in the route; kept self-contained).
         return StationData(
             code = code,
             foF2 = foF2,
