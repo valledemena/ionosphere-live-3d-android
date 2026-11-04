@@ -10,15 +10,12 @@ import java.util.TimeZone
 
 /**
  *
- * Desviación registrada (familia H5, recibo GLM): en `_day completa_` (>=24 tokens)
- * de una tormenta intensa, el web `parseInt` toma prefijo de la cadena '-139-400'
- * emitiendo `dst = -139`; Kotlin `toIntOrNull` descarta la hora — películas no
- * Llegar a una hoja real si los campos se pegan. `toIntOrNull` es mas seguro para
- * consumo; se mantiene la desviación consciente.
- * Port field-by-field. Desviación documentada (recibo):
- * - Días completos (>=24 tokens) de tormentas intensas (Dst <= -100) pegán
- *   el Kp/los valores ocupando 4 chars contiguos; web emite prefijo, Kotlin
- *   lo salta (más seguro). Se registra como divergencia consciente.
+  * Desviación registrada: en días completos (>=24 tokens) de tormentas
+  * intensas (Dst <= -100), el web parseInt toma prefijo de cadena `-139-400` y
+  * emite dst = -139. Kotlin toIntOrNull salta la hora (mas seguro consumo).
+  * En días parciales (<24 tokens) y placeholders, ambos parsers la descartan.
+  * Desviación consciente port field-by-field; se registra, no se corrige estandar.
+  * Sin red ni IO: fixtures dorados validan.
  * - Días parciales (<24 tokens) y placeholders 9999 se descartan en ambas.
  * Sin red ni IO: fixtures dorados validan.
  */
