@@ -9,7 +9,6 @@ import com.valledemena.ionosphere.data.net.HttpClient
 import com.valledemena.ionosphere.data.net.NetCache
 import com.valledemena.ionosphere.data.net.Outcome
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -18,9 +17,9 @@ import java.util.TimeZone
 private const val URL_CATALOG = "https://lgdc.uml.edu/common/DIDBFastStationList?orderByField=ursiCode"
 private const val GETBEST = "https://lgdc.uml.edu/fastchar/getbest"
 
-private val CORE_STATIONS = listOf("EB040", "EA036", "PQ052", "JR055", "KL154")
+private val CORE_STATIONS = listOf("EB040","EA036","PQ052","JR055","KL154")
 private val ANCHOR_EXTRA_CHARS = listOf("foE", "foF1", "hmF2", "B0", "B1")
-private val ANCHOR_STATIONS = listOf("EB040", "JR055", "PQ052", "FF051", "BC840", "TO535", "PF765", "BVJ03", "RL052", "AU930", "AT138", "TR170")
+private val ANCHOR_STATIONS = listOf("EB040","JR055","PQ052") // solo anchors que intersecan con CORE_STATIONS
 
 class IonosondeAdapter(
     private val http: HttpClient,
@@ -48,7 +47,7 @@ class IonosondeAdapter(
 
             for ((idx, code) in stations.withIndex()) {
                 val info = meta[code]
-                // Keep only stations where coordinates exist — avoids invisible globe points.
+                // Keep only stations where coordinates exist â€” avoids invisible globe points.
                 if (info == null) { delay(antiHerdDelayMs); continue }
                 val data = fetchStation(code, now)
                 if (data != null) {
