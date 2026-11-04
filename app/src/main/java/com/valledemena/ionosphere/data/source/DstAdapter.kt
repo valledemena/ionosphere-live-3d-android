@@ -23,6 +23,20 @@ class DstAdapter(
         timeZone = TimeZone.getTimeZone("UTC")
     }
 
+    /**
+     * Bloque de failover documentado (E2 — registro de desviación voluntaria).
+     *
+     * Web `fetchText` devuelve null en `!res.ok` o en `catch`; este adapter hace
+     * por-petición (runCatching) y, si todos los bodies son null pero hubo una
+     * excepción de transporte, devuelve Cached (si existe caché) o Failed —
+     * preferencia móvil por "último-bueno" sobre payload "unavailable" vacío.
+     *
+     * Inconsistencia anotada pero aceptada (rama (B) de H3):
+     *     404/503 ×3 → Live("unavailable") cacheado
+     *     excepción×3 → Cached/Failed sin cachear
+     * Ambos estados de cero datos, semántica distinta por tipo de fallo. La UI
+     * debe tratar "source=unavailable" y "Cached(…, error)" como degradación.
+     */
     suspend fun fetch(): Outcome<DstData> {
         val now = clock()
         val cal = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply { timeInMillis = now }

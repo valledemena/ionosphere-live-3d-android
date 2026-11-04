@@ -6,19 +6,16 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import java.util.Calendar
-import java.util.Locale
 import java.util.TimeZone
 
 /**
- * Parseres puros de los payloads Dst — port field-by-field de `src/lib/iono/dst.ts`
- * (web R0, pin `aeeea3862315b6ba092318b9bbfb2f48e47bb05a`).
- * Port field-by-field. Desviación documentada (recibo):
- * - Días completos (>=24 tokens) de tormentas intensas (Dst <= -100) pegán
- *   el Kp/los valores ocupando 4 chars contiguos; web emite prefijo, Kotlin
- *   lo salta (más seguro). Se registra como divergencia consciente.
- * - Días parciales (<24 tokens) y placeholders 9999 se descartan en ambas.
- * Sin red ni IO: fixtures dorados validan.
- */
+ *
+  * Desviacion registrada:
+  * Dias completos (>=24 tokens) de tormentas intensas (Dst <= -100): el web
+  * parseInt toma el prefijo de -139-400 y emite dst = -139; Kotlin toIntOrNull
+  * lo salta (más seguro). Ambos parsers descartan dias parciales y placeholders.
+  *
+  * Sin red ni IO: fixtures dorados validan. */
 
 object DstParser {
 
