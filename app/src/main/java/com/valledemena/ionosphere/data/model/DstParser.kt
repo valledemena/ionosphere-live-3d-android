@@ -10,15 +10,12 @@ import java.util.TimeZone
 
 /**
  *
-  * Desviación registrada: en días completos (>=24 tokens) de tormentas
-  * intensas (Dst <= -100), el web parseInt toma prefijo de cadena `-139-400` y
-  * emite dst = -139. Kotlin toIntOrNull salta la hora (mas seguro consumo).
-  * En días parciales (<24 tokens) y placeholders, ambos parsers la descartan.
-  * Desviación consciente port field-by-field; se registra, no se corrige estandar.
-  * Sin red ni IO: fixtures dorados validan.
- * - Días parciales (<24 tokens) y placeholders 9999 se descartan en ambas.
- * Sin red ni IO: fixtures dorados validan.
- */
+  * Desviacion registrada:
+  * Dias completos (>=24 tokens) de tormentas intensas (Dst <= -100): el web
+  * parseInt toma el prefijo de -139-400 y emite dst = -139; Kotlin toIntOrNull
+  * lo salta (más seguro). Ambos parsers descartan dias parciales y placeholders.
+  *
+  * Sin red ni IO: fixtures dorados validan. */
 
 object DstParser {
 
