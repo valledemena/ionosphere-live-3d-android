@@ -9,14 +9,17 @@ import java.util.Calendar
 import java.util.TimeZone
 
 /**
+ * Parseres puros de los payloads Dst — port field-by-field de src/lib/iono/dst.ts
+ * (web R0, pin eeea3862315b6ba092318b9bbfb2f48e47bb05a).
  *
-  * Desviacion registrada:
-  * Dias completos (>=24 tokens) de tormentas intensas (Dst <= -100): el web
-  * parseInt toma el prefijo de -139-400 y emite dst = -139; Kotlin toIntOrNull
-  * lo salta (más seguro). Ambos parsers descartan dias parciales y placeholders.
-  *
-  * Sin red ni IO: fixtures dorados validan. */
-
+ * Desviacion registrada (recibo verificado):
+ * En dias completos (>=24 tokens) de tormentas intensas (Dst <= -100), el web
+ * parseInt toma el prefijo de -139-400 y emite dst = -139. Kotlin
+ * toIntOrNull descarta la hora (mas seguro para consumo). Ambos parsers
+ * descartan dias parciales y placeholders. Se registra como desviacion
+ * consciente port field-by-field; no se corrige estilo.
+ * Sin red ni IO: fixtures dorados validan.
+ */
 object DstParser {
 
     data class Point(val t: Long, val dst: Double)
