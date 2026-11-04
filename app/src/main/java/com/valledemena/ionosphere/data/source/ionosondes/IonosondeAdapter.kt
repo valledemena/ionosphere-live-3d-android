@@ -9,6 +9,7 @@ import com.valledemena.ionosphere.data.net.HttpClient
 import com.valledemena.ionosphere.data.net.NetCache
 import com.valledemena.ionosphere.data.net.Outcome
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -34,26 +35,29 @@ class IonosondeAdapter(
         val hit = cache?.load("ionosondes")
         val cached = hit?.let { h ->
             runCatching { Json.decodeFromString<IonosondeData>(h.rawJson) }.getOrNull()?.let { v ->
-                Pair(v, (now - h.fetchedAtMs) >= DataTtl.IONOSONDES_DATA_MS)
+                CachedSnapshot(v, (now - h.fetchedAtMs) >= DataTtl.IONOSONDES_DATA_MS)
             }
         }
-
+        // TTL throttle: if fresh cache, return without network usage.
+        cached?.let { if (!it.stale) return Outcome.Cached(it.value, it.value.source, hit!!.fetchedAtMs, false) }
         return try {
             val meta = loadCatalog(now)
             val extra = loadExtras(now, anchorStations)
             val stationData = mutableListOf<IonosondeStation>()
-            var anyFoRequestFailed = false
+            var anyFailure = false
 
             for ((idx, code) in stations.withIndex()) {
                 val info = meta[code]
+                // Keep only stations where coordinates exist — avoids invisible globe points.
+                if (info == null) { delay(antiHerdDelayMs); continue }
                 val data = fetchStation(code, now)
                 if (data != null) {
                     val ex = extra[code] ?: emptyMap()
                     val sd = IonosondeStation(
                         code = data.code.ifEmpty { code },
-                        name = info?.name ?: code,
-                        lat = info?.lat ?: 0.0,
-                        lon = info?.lon ?: 0.0,
+                        name = info.name,
+                        lat = info.lat,
+                        lon = info.lon,
                         foF2 = data.foF2,
                         muf3000 = data.muf3000,
                         history = data.history.map { StationHistoryPoint(it.t, it.foF2) }.takeLast(2500),
@@ -66,15 +70,13 @@ class IonosondeAdapter(
                     )
                     stationData.add(sd)
                 } else {
-                    anyFoRequestFailed = true
+                    anyFailure = true
                 }
                 if (idx < stations.size - 1) delay(antiHerdDelayMs)
             }
 
-            // Degradacion inteligente: si ninguna estacion respondio, prefiere
-            // cache (vivo) sobre payload vacio.
-            if (anyFoRequestFailed && stationData.isEmpty() && cached != null) {
-                return Outcome.Cached(cached.first, cached.first.source, cached.first.updated, true)
+            if (anyFailure && stationData.isEmpty() && cached != null) {
+                return Outcome.Cached(cached.value, cached.value.source, cached.value.updated, true)
             }
 
             val data = IonosondeData(
@@ -90,10 +92,12 @@ class IonosondeAdapter(
             }
             Outcome.Live(data, data.source, now)
         } catch (e: Throwable) {
-            if (cached != null) Outcome.Cached(cached.first, cached.first.source, cached.first.updated, true, e)
+            if (cached != null) Outcome.Cached(cached.value, cached.value.source, cached.value.updated, true, e)
             else Outcome.Failed(e)
         }
     }
+
+    private data class CachedSnapshot(val value: IonosondeData, val stale: Boolean)
 
     private suspend fun loadCatalog(now: Long): Map<String, IonosondeParser.StationInfo> {
         val html = runCatching { http.get(URL_CATALOG) }.getOrNull()?.let { if (it.ok) it.body else null } ?: return emptyMap()
