@@ -34,6 +34,15 @@ class DstAdapterDegradationTest {
         assertTrue(r is Outcome.Cached)
     }
 
+    @Test fun `fallo parcial dst ok prev ok gst lanza da live con gst vacio`() = runBlocking {
+        val http = object : HttpClient {
+            override suspend fun get(url: String, timeoutMs: Int): HttpResult =
+                if (url.contains("DONKI")) throw java.io.IOException("gst down") else HttpResult(200, sample)
+        }
+        val r = DstAdapter(http).fetch()
+        assertTrue(r is Outcome.Live && r.value.gst.isEmpty())
+    }
+
     @Test fun `cliente que lanza sin cache deriva a failed`() = runBlocking {
         val throwing = object : HttpClient { override suspend fun get(url: String, timeoutMs: Int): HttpResult { throw java.io.IOException("net") } }
         val r = DstAdapter(throwing).fetch()

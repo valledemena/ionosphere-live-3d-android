@@ -57,7 +57,7 @@ class DstParserTest {
     @Test fun gst_vacio() = assertEquals(emptyList<DstStormData>(), DstParser.parseGst(""))
     @Test fun gst_no_array() = assertEquals(emptyList<DstStormData>(), DstParser.parseGst("{ \"foo\": 1 }"))
 
-    @Test fun dstBand_standargs() {
+    @Test fun dstBand_bands() {
         assertEquals("quiet", DstParser.dstBand(0))
         assertEquals("quiet", DstParser.dstBand(-30))
         assertEquals("unsettled", DstParser.dstBand(-31))

@@ -9,6 +9,11 @@ package com.valledemena.ionosphere.data.model
  * Contrato de licencia (R0): cualquier fixture que use estas funciones
  * debe ser licencia-declarada. SAO/EB040 (Observatorio del Ebro) está **prohibido**
  * — la regla dura del proyecto lo prohíbe en cualquier vía futura.
+ *
+ * Desviación registrada (familia H5): el upstream web usa `parseFloat`, mientras
+ * este port usa `toDoubleOrNull` (estricto) para el extra parse de foE/foF1/etc.
+ * (ambos los rechazan si inválidos; `parseFloat` práctica interminable);
+ * documented.
  */
 object IonosondeParser {
 
@@ -69,7 +74,7 @@ object IonosondeParser {
             }
             found
         }
-        // we do not apply the ±2500 to keep parser simple; adapter truncates history.
+// we apply the 2500 cap here (web does it in the route; kept self-contained).
         return StationData(
             code = code,
             foF2 = foF2,

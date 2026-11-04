@@ -6,12 +6,15 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import java.util.Calendar
-import java.util.Locale
 import java.util.TimeZone
 
 /**
- * Parseres puros de los payloads Dst — port field-by-field de `src/lib/iono/dst.ts`
- * (web R0, pin `aeeea3862315b6ba092318b9bbfb2f48e47bb05a`).
+ *
+ * Desviación registrada (familia H5, recibo GLM): en `_day completa_` (>=24 tokens)
+ * de una tormenta intensa, el web `parseInt` toma prefijo de la cadena '-139-400'
+ * emitiendo `dst = -139`; Kotlin `toIntOrNull` descarta la hora — películas no
+ * Llegar a una hoja real si los campos se pegan. `toIntOrNull` es mas seguro para
+ * consumo; se mantiene la desviación consciente.
  * Port field-by-field. Desviación documentada (recibo):
  * - Días completos (>=24 tokens) de tormentas intensas (Dst <= -100) pegán
  *   el Kp/los valores ocupando 4 chars contiguos; web emite prefijo, Kotlin
