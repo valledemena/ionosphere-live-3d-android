@@ -1,0 +1,7 @@
+# Fixture dorado — WDC Kyoto, días 04/05 de octubre de 2026 (UTC)
+#
+# Origen: https://wdc.kugi.kyoto-u.ac.jp/dst_realtime/presentmonth/dst2610.for.request
+# Licencia: datos públicos WDC Kyoto, redistribución permitida con atribución.
+# Capturado: 2026-11-03 (verificado byte-a-byte contra upstream vivo).
+DST2610*04RRX020   0  16  29  23  23  14  22  21  -4 -27 -18 -15 -22 -36 -47 -53 -60 -56 -56 -51 -49 -44 -36 -37 -37 -21
+DST2610*05RRX020   0 -36 -44 -47 -55 -55 -44 -35 -35 -36 -44 -41 -31 -26 -23 -22 -31 -34 -37 -36 -38 -40 -41 -31 -29 -37
