@@ -19,7 +19,7 @@ private const val GETBEST = "https://lgdc.uml.edu/fastchar/getbest"
 
 private val CORE_STATIONS = listOf("EB040", "EA036", "PQ052", "JR055", "KL154")
 private val ANCHOR_EXTRA_CHARS = listOf("foE", "foF1", "hmF2", "B0", "B1")
-private val ANCHOR_STATIONS = listOf("EB040", "JR055", "PQ052", "FF051", "BC840", "TO535", "PF765", "BVJ03", "RL052", "AU930", "AT138", "TR170")
+private val ANCHOR_STATIONS = listOf("EB040", "JR055", "PQ052") // solo anchors que intersecan con CORE_STATIONS
 
 class IonosondeAdapter(
     private val http: HttpClient,
