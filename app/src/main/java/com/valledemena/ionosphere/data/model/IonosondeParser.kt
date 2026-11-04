@@ -29,7 +29,7 @@ object IonosondeParser {
     )
 
     fun parseCatalog(html: String): List<StationInfo> {
-        val re = Regex("""ursiCode=([A-Z0-9]{5})">[^<]*</a></td><td[^>]*><big>([^<]*)</big></td><td[^>]*><big>\s*(-?[0-9.]+)</big></td><td[^>]*><big>\s*(-?[0-9.]+)</big></td>""", RegexOption.IGNORE_CASE)
+        val re = Regex("""ursiCode=([A-Z0-9]{5})">[^<]*</a></big></td><td[^>]*><big>([^<]*)</big></td><td[^>]*><big>\s*(-?[0-9.]+)</big></td><td[^>]*><big>\s*(-?[0-9.]+)</big></td>""")
         val out = mutableListOf<StationInfo>()
         var m = re.find(html)
         while (m != null) {
@@ -74,7 +74,7 @@ object IonosondeParser {
             code = code,
             foF2 = foF2,
             muf3000 = muf3000,
-            history = history,
+            history = history.takeLast(2500),
         )
     }
 

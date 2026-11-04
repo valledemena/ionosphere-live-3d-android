@@ -1,22 +1,28 @@
 package com.valledemena.ionosphere.data.model
 
+import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class IonosondeParserTest {
     @Test
-    fun parseCatalog_extrae_estacion() {
-        // Generado para que el regex extraiga una estacion (form Simplified).
-        val html = """
-            <a href="ursiCode=EB040">x</a></td><td><big>Roquetes</big></td><td><big> 40.06 </big></td><td><big> 2.0 </big></td>
-        """.trimIndent()
+    fun parseCatalog_real_html() {
+        // Fixture dorado: HTML real capturado de lgdc.uml.edu (sin SAO/EB040).
+        val candidates = listOf(
+            "docs/fixtures/ionosondes/catalog-real.html",
+            "../../docs/fixtures/ionosondes/catalog-real.html",
+            "../../../docs/fixtures/ionosondes/catalog-real.html",
+        )
+        val f = candidates.map { File(it) }.firstOrNull { it.exists() } ?: return
+        val html = f.readText()
         val out = IonosondeParser.parseCatalog(html)
-        // regex sensitive a la forma exacta de web; si hay 0, el test falla y se ajusta.
-        if (out.isNotEmpty()) {
-            assertEquals("EB040", out[0].code)
-            assertEquals(40.06, out[0].lat, 1e-6)
-        }
+        assertTrue("regex debe casar al menos 100 estaciones del catalogo real", out.size >= 100)
+        assertEquals("AA343", out[0].code)  // primer orden ursiCode
+        val starbuck = out.firstOrNull { it.code == "AC843" }
+        assertTrue("AC843 debe estar en el catalogo (IDAHO LAB)", starbuck != null)
+        assertEquals(43.18, starbuck!!.lat, 1e-2)
+        assertEquals(-112.68, starbuck.lon, 1e-2)
     }
 
     @Test
