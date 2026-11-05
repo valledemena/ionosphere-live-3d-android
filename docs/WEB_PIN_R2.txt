@@ -9,3 +9,4 @@ src/app/api/dst/route.ts                                         fe1c1cbba879dc7
 src/lib/iono/dst.ts                                              bddc0e9b9755f64b28c6b2b04e8c9e4a55d9d809
 src/lib/iono/fallback.ts (pin GLM)                               c276f7415d7a1495a3f3f548a3d47aca9feb1123
 src/lib/iono/dst.test.ts                                         5c05d9c955cc065843b7053e4bf660401cbd545e
+src/lib/iono/parker.ts                                           6c47c30e9eb5af12ada696e16caf7462b59edabd
