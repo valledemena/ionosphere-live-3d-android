@@ -1,5 +1,6 @@
 package com.valledemena.ionosphere.ui
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -59,8 +60,13 @@ fun GlobeScreen(modifier: Modifier = Modifier) {
         }
     }
 
-    AndroidView(
-        modifier = modifier.fillMaxSize(),
-        factory = { context -> GlobeSurfaceView(context).also { view = it } },
-    )
+    Box(modifier = modifier.fillMaxSize()) {
+        AndroidView(
+            modifier = Modifier.fillMaxSize(),
+            factory = { context -> GlobeSurfaceView(context).also { view = it } },
+        )
+        // Panel de diagnostico (debug-only; en release dataPanelFactory es null
+        // y este call es un no-op - ver DataPanelHost.kt).
+        DataPanelHost()
+    }
 }
