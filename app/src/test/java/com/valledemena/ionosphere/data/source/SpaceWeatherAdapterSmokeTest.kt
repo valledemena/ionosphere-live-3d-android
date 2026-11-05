@@ -22,12 +22,18 @@ import kotlinx.coroutines.runBlocking
 class SpaceWeatherAdapterSmokeTest {
 
     /** Stub: cada endpoint devuelve JSON minimo fiel a la forma real (harvest 2026-11-05). */
-    private class StubHttp(private val forecastBody: String) : HttpClient {
+    private class StubHttp(
+        private val forecastBody: String,
+        private val failN2: Boolean = false,
+    ) : HttpClient {
         val calls = mutableListOf<String>()
 
         override suspend fun get(url: String, timeoutMs: Int): HttpResult {
             calls.add(url)
             val path = url.substringAfter(".gov")
+            if (failN2 && nivel2Paths.any { path.contains(it) }) {
+                return HttpResult(503, null) // fallo HTTP: todo el Nivel 2 cae
+            }
             if (path.startsWith("/text/3-day-forecast.txt")) return HttpResult(200, forecastBody)
             if (path.startsWith("/json/planetary_k_index_1m.json")) {
                 return HttpResult(200, """[{"time_tag":"2026-11-05T03:39:00","kp_index":0,"estimated_kp":0.33,"kp":"0P"}]""")
@@ -77,7 +83,9 @@ class SpaceWeatherAdapterSmokeTest {
         error("fixture 3-day-forecast-real.txt no encontrado en ningun path esperado")
     }
 
-    private val nivel2Paths = listOf("rtsw", "sunspot", "integral-protons", "xrays-1-day")
+    companion object {
+        private val nivel2Paths = listOf("rtsw", "sunspot", "integral-protons", "xrays-1-day")
+    }
 
     @Test
     fun ciclo1_parseFixtureReal_yNivel1SixEndpoints() = runBlocking {
@@ -107,6 +115,30 @@ class SpaceWeatherAdapterSmokeTest {
         assertFalse("fresca no stale", (second as Outcome.Cached).stale)
         assertEquals("cache fresca = 0 requests", callsAfterFirst, http.calls.size)
         assertEquals((first as Outcome.Live).value.updated, second.value.updated)
+    }
+
+    @Test
+    fun nivel2TodoFallo_noAdoptaYReintentaElProximoCiclo() = runBlocking {
+        // cache = null para no topetar el atajo de cache fresca: forzamos ciclos reales.
+        val http = StubHttp(fixtureText(), failN2 = true)
+        val adapter = SpaceWeatherAdapter(http, cache = null)
+        val first = adapter.fetch()
+        assertTrue("N1 vive sin N2", first is Outcome.Live)
+        val v = (first as Outcome.Live).value
+        // wind.source depende de los summaries de Nivel 1 (viven); lo que cae
+        // con N2 son bx/density (0 honestos) y mag/sunspots/protons/seriesDay.
+        assertEquals("NOAA DSCOVR (live)", v.wind.source)
+        assertEquals(0.0, v.wind.bx, 1e-9)
+        assertEquals(0.0, v.wind.density, 1e-9)
+        assertEquals("unavailable", v.mag.source)
+        assertEquals("unavailable", v.sunspots.source)
+        val n2CallsFirstCycle = http.calls.count { c -> nivel2Paths.any { c.contains(it) } }
+        assertEquals(5, n2CallsFirstCycle)
+
+        val second = adapter.fetch()
+        assertTrue("N1 sigue vivo", second is Outcome.Live)
+        val n2CallsAfterCycle2 = http.calls.count { c -> nivel2Paths.any { c.contains(it) } }
+        assertEquals("el N2 no adoptado reintenta: 5 llamadas mas", 10, n2CallsAfterCycle2)
     }
 
     @Test

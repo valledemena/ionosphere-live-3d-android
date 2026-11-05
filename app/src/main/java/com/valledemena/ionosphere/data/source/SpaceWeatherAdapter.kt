@@ -52,11 +52,17 @@ import kotlinx.coroutines.coroutineScope
  *  - `mag.series` NO porta el downsampling doble `i % 5 === 0` del web (que
  *    deja ~1 de cada 25 muestras, ~7-8 puntos por ventana: casi seguro bug
  *    del web). El adapter entrega la serie densa (1/1) con `takeLast(216)`.
- *    20x mas denso que el espejo: d intelligente, no un typo, declarado aqui.
+ *    20x mas denso que el espejo: divergencia declarada aqui, no un typo
+ *    del puerto.
  *  - Centinela de clase X-ray vacia `--` (ASCII) en vez del em-dash del web.
  *  - Checks `isNotEmpty()` en vez de truthy de JS: con 0 filas el pin decia
  *    "live"; aqui es "unavailable" honesto.
- *  - Sort defensivo por `t` en todas las series antes de saturar/tail.
+ *  - Sort defensivo por `t` en todas las series antes de saturar/tail;
+ *    `sunspots.regions` se ordena por `region` (el pin no ordena: aqui el
+ *    orden es determinista para la UI).
+ *  - Si TODOS los endpoints del Nivel 2 fallan (todos los bodies null),
+ *    el Nivel 2 NO se adopta y su timestamp NO se descuenta: el proximo
+ *    ciclo reintenta. Si algunos llegan, se adopta con su `fetchedAtMs`.
  */
 class SpaceWeatherAdapter(
     private val http: HttpClient,
@@ -123,11 +129,12 @@ class SpaceWeatherAdapter(
             val n1 = pair.first
             val n2Bodies = pair.second
 
-            val n2: Nivel2 = if (n2Bodies != null) {
-                buildNivel2(n2Bodies[0], n2Bodies[1], n2Bodies[2], n2Bodies[3], n2Bodies[4], now)
+            // Nivel 2: si TODOS sus bodies fallan (null), no se adopta ni se
+            // descuenta su TTL: el proximo ciclo reintenta (F-N2).
+            var n2: Nivel2 = nivel2 ?: emptyNivel2(now)
+            if (n2Bodies != null && n2Bodies.any { !it.isNullOrEmpty() }) {
+                n2 = buildNivel2(n2Bodies[0], n2Bodies[1], n2Bodies[2], n2Bodies[3], n2Bodies[4], now)
                     .also { nivel2 = it }
-            } else {
-                nivel2 ?: emptyNivel2(now)
             }
 
             // ---- Parseo de Nivel 1 ----

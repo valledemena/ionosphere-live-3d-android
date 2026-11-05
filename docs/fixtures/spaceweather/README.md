@@ -7,13 +7,13 @@
 
 **Fecha del issue capturado**: `:Issued: 2026 Nov 05 0030 UTC`.
 
-- **1890 bytes** en la primera captura del `bed55f8` y ahora corregido:
+- **1890 bytes** tenia la primera captura del `bed55f8`; corregido a
   **1957 bytes, byte-exact del servicio** (verificado por `git hash-object`
-  contra una re-harvest curl a 1957 con **0 CRs** y hash
-  `048c8aaebc0eb937a4c2886ef0962b1b506d5ffd`), con **0 CRs**. El delta de
-  67 bytes de la version anterior provenia de re-tipear el texto a mano
-  (los espacios finales de la tabla Kp, filas 00-03UT a 21-00UT, se
-  perdian); NO de finales de linea - el servicio emite `\n` puro, sin CRs.
+  contra una re-harvest curl (hash
+  `048c8aaebc0eb937a4c2886ef0962b1b506d5ffd`). El servicio emite `\n` puro
+  (sin CRs). El delta de 67 bytes de la primera version provenia de re-tipear
+  el texto a mano (los espacios finales de la tabla Kp, filas 00-03UT a
+  21-00UT, se perdian); NO de finales de linea.
 
 **Licencia**: obra del Gobierno de EE. UU. (NOAA/SWPC), dominio publico.
 
