@@ -4,10 +4,10 @@ Aplicación móvil autónoma del proyecto **Ionosphere Live 3D** (escritorio en
 `ionosphere-live-3d`, web en `ionosphere-live-3d-web`). Se conecta **directamente
 a las fuentes públicas**: no necesita ningún servidor desplegado.
 
-Estado: **R2 — Núcleo de datos (contrato v1)** en ramas `r2/*` (modelos, schemas
-y TTLs ya fusionados en main; adaptadores en curso: Ionosonde mergeado en el
-primer sub-slice). Ver `docs/r0/` (baseline), `docs/DATA_LAYER.md` y el
-`NOTICE` para las licencias de terceros.
+Estado: **R2 — Núcleo de datos (contrato v1)**. Baseline acordada y
+publicada, verificada por hash: `docs/r0/`. Capa de datos parcialmente fusionada
+en `main` (modelos+esquemas+infra+adaptadores Aurora/Dst/Ionosonde). Space-weather
+y gate de dispositivo aún por hacer. Ver `docs/DATA_LAYER.md`.
 
 ## Qué hay ahora
 
@@ -19,9 +19,9 @@ primer sub-slice). Ver `docs/r0/` (baseline), `docs/DATA_LAYER.md` y el
 - **Render-on-demand**: `RENDERMODE_WHEN_DIRTY` + `Choreographer` con techo de
   30 fps, y parada en `ON_STOP`. Nada se dibuja en segundo plano.
 - **Capa de datos (R2 convenience)**: modelos espejo + schemas en
-  `docs/contracts/` + `data/source` adaptadores directos (space-weather, dst,
-  aurora, ionosondes) con TTLs de `DATA_CONTRACT` y degradación honesta.
-  Ver `docs/DATA_LAYER.md`.
+  `docs/contracts/` + `data/source` adaptadores directos (dst, aurora e
+  ionosondes; space-weather en preparación) con TTLs de `DATA_CONTRACT` y
+  degradación honesta. Ver `docs/DATA_LAYER.md`.
 - **Con red**: permiso `INTERNET` declarado (adaptadores directos a fuentes públicas).
 
 ## Compilar

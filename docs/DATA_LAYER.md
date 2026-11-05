@@ -8,14 +8,14 @@ El movil llama directo a las fuentes publicas, autocontenido. No necesita servid
 - **dst** (15 min)
 - **ionosondes** (10 min datos / 24 h catalogo / 60 min extras / 5 min anti-herd)
 
-## Arquitectura, TTL y degradación
+## Arquitectura, TTL y degradacion
 
 Los adaptadores (`data/source/*`) devuelven `Outcome` (`Live` / `Cached` / `Failed`):
 - Live: datos disponibles con source declarado.
-- Cached: último-bueno cuando la red falla (stale si pasó el TTL).
+- Cached: ultimo-bueno cuando la red falla (stale si paso el TTL).
 - Failed: sin red y sin cache.
 
-Precedencia: live > cache > (model unavailable). `stale` > 6 h en estaciones.
+Precedencia: live > cache > (model unavailable).
 
 UA identificativo: `IonosphereLive3D-Android/0.x (...)`. Timeouts 12-25 s con cancelacion por coroutines. Un fallo HTTP nunca crashea: degrada.
 
