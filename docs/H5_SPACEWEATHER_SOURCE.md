@@ -8,7 +8,7 @@ anchors aplica: la premisa se fija antes de escribir, no despues.
 > `--compressed` contando bytes de transferencia, y endpoints con
 > `Accept-Encoding: identity` para el crudo. Los numeros de transferencia
 > coinciden con la medicion externa de auditoria (max delta 1 %). Gracias
-> la correccion: el argumento decisivo ya no es el peso en red, es el
+> **a** la correccion: el argumento decisivo ya no es el peso en red, es el
 > **coste de parseo** (gzip ahorra red, no CPU).
 
 ## Linea base (espejo web, pinado)
@@ -53,8 +53,8 @@ es CPU/GC/bateria, no red - y ese no lo ahorra gzip.
 | Parseo por ciclo | ~5.24 MB | ~0.21 MB |
 | **Parseo por hora** | **~209 MB/h** | **~13.4 MB/h** |
 
-Sin descomprimir/gz crops: A significa deserializar ~5 MB de JSON cada 90
-segundos en un telefono. Eso es el argumento, no la red.
+Medido en crudo, fuera de la capa de compresion: A significa deserializar
+~5 MB de JSON cada 90 segundos en un telefono. Eso es el argumento, no la red.
 
 ---
 
