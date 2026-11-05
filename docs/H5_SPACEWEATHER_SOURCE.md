@@ -108,11 +108,11 @@ alimentando el HUD (R3); entonces se mueve de nivel, no se re-escribe nada.
 
 ---
 
-## Decision de David
+## Decision de David (2026-11-05)
 
 - [ ] A  (directo fiel, ~16 MB/h red / ~209 MB/h parseo)
 - [ ] B  (via ruta web proxy)
-- [ ] C  (directo a dos niveles, ~1.4 MB/h red / ~13 MB/h parseo)
+- [x] C  (directo a dos niveles, ~1.4 MB/h red / ~13 MB/h parseo)
 
 Nota de implementacion posterior a la decision: el adapter trae parser propio
 para el forecast (texto plano, regex `greatest expected 3 hr Kp` /
