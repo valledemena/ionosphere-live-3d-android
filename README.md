@@ -4,8 +4,10 @@ Aplicación móvil autónoma del proyecto **Ionosphere Live 3D** (escritorio en
 `ionosphere-live-3d`, web en `ionosphere-live-3d-web`). Se conecta **directamente
 a las fuentes públicas**: no necesita ningún servidor desplegado.
 
-Estado: **R1 — Esqueleto + CI** (rama `r1/skeleton`). Baseline acordada y
-publicada, verificada por hash: `docs/r0/`.
+Estado: **R2 — Núcleo de datos (contrato v1)** en ramas `r2/*` (modelos, schemas
+y TTLs ya fusionados en main; adaptadores en curso: Ionosonde mergeado en el
+primer sub-slice). Ver `docs/r0/` (baseline), `docs/DATA_LAYER.md` y el
+`NOTICE` para las licencias de terceros.
 
 ## Qué hay ahora
 
@@ -16,7 +18,11 @@ publicada, verificada por hash: `docs/r0/`.
   procedural, mipmaps, iluminación difusa.
 - **Render-on-demand**: `RENDERMODE_WHEN_DIRTY` + `Choreographer` con techo de
   30 fps, y parada en `ON_STOP`. Nada se dibuja en segundo plano.
-- **Sin red**: no hay permiso `INTERNET` ni código de red.
+- **Capa de datos (R2 convenience)**: modelos espejo + schemas en
+  `docs/contracts/` + `data/source` adaptadores directos (space-weather, dst,
+  aurora, ionosondes) con TTLs de `DATA_CONTRACT` y degradación honesta.
+  Ver `docs/DATA_LAYER.md`.
+- **Con red**: permiso `INTERNET` declarado (adaptadores directos a fuentes públicas).
 
 ## Compilar
 
@@ -44,6 +50,10 @@ app/src/main/java/com/valledemena/ionosphere/
     ├── Rotation.kt          reloj de rotación y techo de FPS
     ├── SphereMesh.kt        malla esférica UV
     └── PlaceholderGlobeTexture.kt  textura procedural 2048×1024
+└── data/                    capa de datos (R2 convenience)
+    ├── DataTtl.kt           TTLs por fuente
+    ├── model/*              espejo Kotlin de los payloads web
+    └── source/*             adaptadores directos + net + cache
 ```
 
 ## Procedencia de assets
