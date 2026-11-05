@@ -24,7 +24,6 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import java.time.Instant
 import java.time.OffsetDateTime
-import java.time.ZoneOffset
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -42,9 +41,22 @@ import kotlinx.coroutines.coroutineScope
  *   patron de degradacion de IonosondeAdapter con las extras anclas.
  *
  * Semantica de Outcome y cache: espejo de DstAdapter. Cache fresca (<90 s)
- * devuelve Cached(stale=false) sin TAL red; fallos de transporte con cache
- * previa degradan a Cached(stale) y sin cache a Failed. Un fallo HTTP nunca
- * crashea.
+ * devuelve Cached(stale=false) sin ninguna red; fallos de transporte con
+ * cache previa degradan a Cached(stale) y sin cache a Failed. Un fallo HTTP
+ * nunca crashea.
+ *
+ * Divergencias documentadas de la casa (regla DstParser B-3):
+ *  - Nivel 2 corre en el MISMO coroutineScope que Nivel 1 (H5 decision C:
+ *    "detras, sin bloquear" cumple como max(N1,N2) en cold start, no como
+ *    suma - F1 de la revision hunk-a-hunk del PR #12).
+ *  - `mag.series` NO porta el downsampling doble `i % 5 === 0` del web (que
+ *    deja ~1 de cada 25 muestras, ~7-8 puntos por ventana: casi seguro bug
+ *    del web). El adapter entrega la serie densa (1/1) con `takeLast(216)`.
+ *    20x mas denso que el espejo: d intelligente, no un typo, declarado aqui.
+ *  - Centinela de clase X-ray vacia `--` (ASCII) en vez del em-dash del web.
+ *  - Checks `isNotEmpty()` en vez de truthy de JS: con 0 filas el pin decia
+ *    "live"; aqui es "unavailable" honesto.
+ *  - Sort defensivo por `t` en todas las series antes de saturar/tail.
  */
 class SpaceWeatherAdapter(
     private val http: HttpClient,
@@ -85,33 +97,38 @@ class SpaceWeatherAdapter(
                 null
             }
 
-            // ---- Nivel 1 (90 s): 6 endpoints en paralelo, como el Promise.all del pin ----
-            val n1 = coroutineScope {
-                listOf(
+            // ---- Nivel 1 + (si toca) Nivel 2: un mismo coroutineScope, todo
+            // async lanzado antes de esperar (cold = max(N1,N2), no suma) ----
+            val n2Due = nivel2 == null || now - nivel2!!.fetchedAtMs >= nivel2TtlMs
+            val pair = coroutineScope {
+                val n1Async = listOf(
                     async { getBody("/json/planetary_k_index_1m.json") },
                     async { getBody("/json/f107_cm_flux.json") },
                     async { getBody("/products/summary/solar-wind-speed.json") },
                     async { getBody("/products/summary/solar-wind-mag-field.json") },
                     async { getBody("/json/goes/primary/xrays-6-hour.json") },
                     async { getBody("/text/3-day-forecast.txt") },
-                ).awaitAll().map { it ?: "" }
+                )
+                val n2Async = if (n2Due) listOf(
+                    async { getBody("/json/rtsw/rtsw_wind_1m.json") },
+                    async { getBody("/json/rtsw/rtsw_mag_1m.json") },
+                    async { getBody("/json/goes/primary/xrays-1-day.json") },
+                    async { getBody("/json/goes/primary/integral-protons-1-day.json") },
+                    async { getBody("/json/sunspot_report.json") },
+                ) else null
+                val n1 = n1Async.awaitAll().map { it ?: "" }
+                val n2 = n2Async?.awaitAll()
+                n1 to n2
             }
+            val n1 = pair.first
+            val n2Bodies = pair.second
 
-            // ---- Nivel 2 (60 min): solo si su TTL propio expiro ----
-            val n2Due = nivel2 == null || now - nivel2!!.fetchedAtMs >= nivel2TtlMs
-            if (n2Due) {
-                val b = coroutineScope {
-                    listOf(
-                        async { getBody("/json/rtsw/rtsw_wind_1m.json") },
-                        async { getBody("/json/rtsw/rtsw_mag_1m.json") },
-                        async { getBody("/json/goes/primary/xrays-1-day.json") },
-                        async { getBody("/json/goes/primary/integral-protons-1-day.json") },
-                        async { getBody("/json/sunspot_report.json") },
-                    ).awaitAll()
-                }
-                nivel2 = buildNivel2(b[0], b[1], b[2], b[3], b[4], now)
+            val n2: Nivel2 = if (n2Bodies != null) {
+                buildNivel2(n2Bodies[0], n2Bodies[1], n2Bodies[2], n2Bodies[3], n2Bodies[4], now)
+                    .also { nivel2 = it }
+            } else {
+                nivel2 ?: emptyNivel2(now)
             }
-            val n2: Nivel2 = nivel2 ?: emptyNivel2(now)
 
             // ---- Parseo de Nivel 1 ----
             val kpRows = n1[0].toArr.map {
@@ -128,8 +145,8 @@ class SpaceWeatherAdapter(
             val f107Pts = f107Series(n1[1])
             val f107Now = f107Pts.lastOrNull()?.f ?: 0.0
 
-            val speedRow = n1[2].toArr.firstOrNull()
-            val magRow = n1[3].toArr.firstOrNull()
+            val speedRow = n1[2].toArr.lastOrNull()  // web: windSpeed[windSpeed.length-1]
+            val magRow = n1[3].toArr.lastOrNull()    // web: windMag[windMag.length-1]
             val wind = SpaceWeatherWind(
                 speed = speedRow?.dbl("proton_speed") ?: 0.0,
                 bt = magRow?.dbl("bt") ?: 0.0,
@@ -141,7 +158,8 @@ class SpaceWeatherAdapter(
             )
 
             val xrSeries = xraySeries6h(n1[4])
-            val xrNow = xrSeries.lastOrNull()?.f?.takeIf { it > 0.0 } ?: 0.0
+            // Web retiene el ultimo flujo positivo (xrNow = flux>0 de la serie).
+            val xrNow = xrSeries.lastOrNull { it.f > 0.0 }?.f ?: 0.0
 
             val forecast = if (n1[5].isNotEmpty()) SpaceWeatherParser.parseForecast(n1[5]) else null
 

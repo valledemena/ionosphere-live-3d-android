@@ -12,14 +12,14 @@ G1).
 NOAA Kp index breakdown Nov 05-Nov 07 2026
 
              Nov 05       Nov 06       Nov 07
-00-03UT       2.67         2.33         5.00 (G1)
-03-06UT       2.67         2.00         3.67
-06-09UT       3.00         2.00         3.33
-09-12UT       2.67         2.33         3.33
-12-15UT       2.67         2.33         3.33
-15-18UT       1.67         3.67         3.33
-18-21UT       1.67         4.00         3.33
-21-00UT       3.67         4.67 (G1)    3.33
+00-03UT       2.67         2.33         5.00 (G1)    
+03-06UT       2.67         2.00         3.67         
+06-09UT       3.00         2.00         3.33         
+09-12UT       2.67         2.33         3.33         
+12-15UT       2.67         2.33         3.33         
+15-18UT       1.67         3.67         3.33         
+18-21UT       1.67         4.00         3.33         
+21-00UT       3.67         4.67 (G1)    3.33         
 
 Rationale: G1 (Minor) geomagnetic storms are likely by late on 06 Nov
 and continuing into 07 Nov due to negative polarity CH HSS influences.
