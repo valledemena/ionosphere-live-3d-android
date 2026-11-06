@@ -1,4 +1,5 @@
 package com.valledemena.ionosphere.render
+
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -19,6 +20,7 @@ class EarthShaderConstantsTest {
         eq(EarthShaderConstants.SPECULAR_POWER, 36.0f)
         eq(EarthShaderConstants.GLITTER, 0.7f)
     }
+    @Test fun pins_night_default() = assertEquals(0.45f, EarthShaderConstants.NIGHT_DEFAULT, 1e-9f)
     @Test fun pins_ocean() {
         eq(EarthShaderConstants.OCEAN_THRESHOLD_LOW, 0.008f)
         eq(EarthShaderConstants.OCEAN_THRESHOLD_HIGH, 0.07f)

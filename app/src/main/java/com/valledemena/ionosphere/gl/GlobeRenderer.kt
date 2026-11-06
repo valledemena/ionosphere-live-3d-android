@@ -124,7 +124,7 @@ private val clock = RotationClock()
 
         GLES20.glUniform1i(uDayTex, 0)
         GLES20.glUniform1i(uNightTex, 1)
-        GLES20.glUniform1f(uNight, 0.45f)
+        GLES20.glUniform1f(uNight, EarthShaderConstants.NIGHT_DEFAULT)
         GLES20.glUniform3f(uSunDir, 0.6f, 0.35f, 0.72f)
         GLES20.glUniformMatrix4fv(uModel, 1, false, model, 0)
         GLES20.glUniform3f(uCameraPos, 0.0f, 0.0f, 3.2f)
