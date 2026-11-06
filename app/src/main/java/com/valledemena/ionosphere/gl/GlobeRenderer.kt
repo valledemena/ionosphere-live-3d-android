@@ -25,8 +25,8 @@ import javax.microedition.khronos.opengles.GL10
 /**
  * Renderer propio sobre GLES 3.x: un globo texturizado, sin motor de terceros.
  *
- * R1 dibuja un frame solo cuando hace falta (`RENDERMODE_WHEN_DIRTY`): el dueño
- * del ciclo de vida pide frames a un techo de FPS mientras la escena está viva.
+ * R1 dibuja un frame solo cuando hace falta (`RENDERMODE_WHEN_DIRTY`): el dueÃƒÂ±o
+ * del ciclo de vida pide frames a un techo de FPS mientras la escena estÃƒÂ¡ viva.
  */
 class GlobeRenderer(private val context: Context) : GLSurfaceView.Renderer {
 
@@ -49,6 +49,7 @@ class GlobeRenderer(private val context: Context) : GLSurfaceView.Renderer {
     private var uNightTex = -1
     private var uNight = -1
     private var uSunDir = -1
+    private var uModel = -1
 
     private val projection = FloatArray(16)
     private val view = FloatArray(16)
@@ -62,10 +63,10 @@ private val clock = RotationClock()
     private var textureWidth = 0
     private var textureHeight = 0
 
-    /** Nº de frames dibujados desde que se creó la superficie. Solo diagnóstico. */
+    /** NÃ‚Âº de frames dibujados desde que se creÃƒÂ³ la superficie. Solo diagnÃƒÂ³stico. */
     val framesDrawn: Int get() = frameCount
 
-    /** Tamaño de la textura cargada. */
+    /** TamaÃƒÂ±o de la textura cargada. */
     val loadedTextureSize: IntArray get() = intArrayOf(textureWidth, textureHeight)
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
@@ -82,6 +83,7 @@ private val clock = RotationClock()
         uNightTex = GLES20.glGetUniformLocation(program, "uNightTex")
         uNight = GLES20.glGetUniformLocation(program, "uNight")
         uSunDir = GLES20.glGetUniformLocation(program, "uSunDir")
+        uModel = GLES20.glGetUniformLocation(program, "uModel")
 
         uploadMesh()
         textureId = uploadTexture(PlaceholderGlobeTexture.TIER_MEDIUM_WIDTH, PlaceholderGlobeTexture.TIER_MEDIUM_HEIGHT)
@@ -91,7 +93,7 @@ private val clock = RotationClock()
 
         Log.i(
             TAG,
-            "Superficie creada (creación nº ${clock.surfaceCreations}): ${mesh.vertexCount} vértices, ${mesh.triangleCount} triángulos, " +
+            "Superficie creada (creaciÃƒÂ³n nÃ‚Âº ${clock.surfaceCreations}): ${mesh.vertexCount} vÃƒÂ©rtices, ${mesh.triangleCount} triÃƒÂ¡ngulos, " +
                 "textura ${textureWidth}x${textureHeight}, GL ${GLES20.glGetString(GLES20.GL_VERSION)}",
         )
     }
@@ -110,7 +112,7 @@ private val clock = RotationClock()
         val angle = clock.angleAt(SystemClock.uptimeMillis())
 
         Matrix.setIdentityM(model, 0)
-        Matrix.rotateM(model, 0, -23.4f, 0f, 0f, 1f)   // inclinación axial declarada
+        Matrix.rotateM(model, 0, -23.4f, 0f, 0f, 1f)   // inclinaciÃƒÂ³n axial declarada
         Matrix.rotateM(model, 0, angle, 0f, 1f, 0f)
         Matrix.multiplyMM(mvp, 0, viewProjection, 0, model, 0)
 
@@ -121,6 +123,7 @@ private val clock = RotationClock()
         GLES20.glUniform1i(uNightTex, 1)
         GLES20.glUniform1f(uNight, 0.45f)
         GLES20.glUniform3f(uSunDir, 0.6f, 0.35f, 0.72f)
+        GLES20.glUniformMatrix4fv(uModel, 1, false, model, 0)
 
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId)
@@ -256,6 +259,7 @@ private val clock = RotationClock()
 
         private const val VERTEX_BODY = """
 uniform mat4 uMvp;
+uniform mat4 uModel;
 in vec3 aPosition;
 in vec3 aNormal;
 in vec2 aUv;
@@ -263,12 +267,11 @@ out vec3 vNormal;
 out vec2 vUv;
 
 void main() {
-    vNormal = aNormal;
+    vNormal = (uModel * vec4(aNormal, 0.0)).xyz;
     vUv = aUv;
     gl_Position = uMvp * vec4(aPosition, 1.0);
 }
-"""
-
+        """
         private const val FRAGMENT_BODY = """
 precision mediump float;
 
@@ -285,9 +288,18 @@ void main() {
     vec3 n = normalize(vNormal);
     vec3 sun = normalize(uSunDir);
     float ndl = dot(n, sun);
-    float dayAmount = clamp((ndl + 0.08) / 0.33, 0.0, 1.0);
+    float dayAmount = smoothstep(-0.08, 0.25, ndl);
+    float band = smoothstep(-0.08, 0.02, ndl) * (1.0 - smoothstep(0.02, 0.35, ndl));
+
     vec3 dayTex = texture(uDayTex, vUv).rgb;
     vec3 dayCol = dayTex * (0.12 + 1.05 * dayAmount);
+    dayCol += vec3(0.38, 0.13, 0.03) * band * (0.35 + 0.65 * dayAmount);
+
+    float ocean = smoothstep(0.008, 0.07, dayTex.b - max(dayTex.r, dayTex.g));
+    vec3 hv = normalize(sun + vec3(0.0, 0.0, 1.0));
+    float spec = pow(max(dot(n, hv), 0.0), 36.0) * ocean * dayAmount;
+    dayCol += vec3(1.0, 0.95, 0.85) * (0.7 * spec);
+
     vec3 nightTex = texture(uNightTex, vUv).rgb;
     vec3 nightCol = nightTex * (uNight * 2.5) + vec3(0.004, 0.007, 0.016);
     vec3 col = mix(nightCol, dayCol, dayAmount);
