@@ -10,8 +10,8 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import com.valledemena.ionosphere.R
-import com.valledemena.ionosphere.render.EarthShaderConstants
 import com.valledemena.ionosphere.core.PlaceholderGlobeTexture
+import com.valledemena.ionosphere.render.EarthShaderConstants
 import com.valledemena.ionosphere.core.Rotation
 import com.valledemena.ionosphere.core.RotationClock
 import com.valledemena.ionosphere.core.SphereMesh
@@ -26,8 +26,8 @@ import javax.microedition.khronos.opengles.GL10
 /**
  * Renderer propio sobre GLES 3.x: un globo texturizado, sin motor de terceros.
  *
- * R1 dibuja un frame solo cuando hace falta (`RENDERMODE_WHEN_DIRTY`): el due    o
- * del ciclo de vida pide frames a un techo de FPS mientras la escena est     viva.
+ * R1 dibuja un frame solo cuando hace falta (`RENDERMODE_WHEN_DIRTY`): el dueo
+ * del ciclo de vida pide frames a un techo de FPS mientras la escena est viva.
  */
 class GlobeRenderer(private val context: Context) : GLSurfaceView.Renderer {
 
@@ -36,7 +36,6 @@ class GlobeRenderer(private val context: Context) : GLSurfaceView.Renderer {
     private var program = 0
     private var textureId = 0
     private var nightTextureId = 0
-    private val earthShaderConstantGuard = EarthShaderConstants.DAY_NIGHT_TERMINATOR_LOW // keeps pins and shader aligned
     private var vao = 0
     private var positionBuffer = 0
     private var normalBuffer = 0
@@ -52,6 +51,7 @@ class GlobeRenderer(private val context: Context) : GLSurfaceView.Renderer {
     private var uNight = -1
     private var uSunDir = -1
     private var uModel = -1
+    private var uCameraPos = -1
 
     private val projection = FloatArray(16)
     private val view = FloatArray(16)
@@ -65,10 +65,10 @@ private val clock = RotationClock()
     private var textureWidth = 0
     private var textureHeight = 0
 
-    /** N     de frames dibujados desde que se cre     la superficie. Solo diagn    stico. */
+    /** N de frames dibujados desde que se cre la superficie. Solo diagnstico. */
     val framesDrawn: Int get() = frameCount
 
-    /** Tama    o de la textura cargada. */
+    /** Tamao de la textura cargada. */
     val loadedTextureSize: IntArray get() = intArrayOf(textureWidth, textureHeight)
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
@@ -86,6 +86,7 @@ private val clock = RotationClock()
         uNight = GLES20.glGetUniformLocation(program, "uNight")
         uSunDir = GLES20.glGetUniformLocation(program, "uSunDir")
         uModel = GLES20.glGetUniformLocation(program, "uModel")
+        uCameraPos = GLES20.glGetUniformLocation(program, "uCameraPos")
 
         uploadMesh()
         textureId = uploadTexture(PlaceholderGlobeTexture.TIER_MEDIUM_WIDTH, PlaceholderGlobeTexture.TIER_MEDIUM_HEIGHT)
@@ -95,7 +96,7 @@ private val clock = RotationClock()
 
         Log.i(
             TAG,
-            "Superficie creada (creaci    n n     ${clock.surfaceCreations}): ${mesh.vertexCount} v    rtices, ${mesh.triangleCount} tri    ngulos, " +
+            "Superficie creada (creacin n ${clock.surfaceCreations}): ${mesh.vertexCount} vrtices, ${mesh.triangleCount} tringulos, " +
                 "textura ${textureWidth}x${textureHeight}, GL ${GLES20.glGetString(GLES20.GL_VERSION)}",
         )
     }
@@ -114,7 +115,7 @@ private val clock = RotationClock()
         val angle = clock.angleAt(SystemClock.uptimeMillis())
 
         Matrix.setIdentityM(model, 0)
-        Matrix.rotateM(model, 0, -23.4f, 0f, 0f, 1f)   // inclinaci    n axial declarada
+        Matrix.rotateM(model, 0, -23.4f, 0f, 0f, 1f)   // inclinacin axial declarada
         Matrix.rotateM(model, 0, angle, 0f, 1f, 0f)
         Matrix.multiplyMM(mvp, 0, viewProjection, 0, model, 0)
 
@@ -126,6 +127,7 @@ private val clock = RotationClock()
         GLES20.glUniform1f(uNight, 0.45f)
         GLES20.glUniform3f(uSunDir, 0.6f, 0.35f, 0.72f)
         GLES20.glUniformMatrix4fv(uModel, 1, false, model, 0)
+        GLES20.glUniform3f(uCameraPos, 0.0f, 0.0f, 3.2f)
 
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId)
@@ -213,9 +215,14 @@ private val clock = RotationClock()
         textureHeight = height
         return id
     }
+
     private fun uploadTextureFromBitmap(resId: Int): Int {
-        val bmp = BitmapFactory.decodeResource(context.resources, resId)
-        val pixels = IntArray(bmp.width * bmp.height)
+        val opts = BitmapFactory.Options().apply {
+            inPreferredConfig = Bitmap.Config.ARGB_8888
+            inScaled = false
+        }
+        val bmp = BitmapFactory.decodeResource(context.applicationContext.resources, resId, opts)
+        val pixels = IntArray(bmp!!.width * bmp!!.height)
         bmp.getPixels(pixels, 0, bmp.width, 0, 0, bmp.width, bmp.height)
         val buffer = ByteBuffer.allocateDirect(pixels.size * 4).order(ByteOrder.nativeOrder())
         for (px in pixels) {
@@ -258,7 +265,6 @@ private val clock = RotationClock()
 
     companion object {
         private const val TAG = "GlobeRenderer"
-    private val earthShaderConstantsGuard = EarthShaderConstants.DAY_NIGHT_TERMINATOR_LOW
 
         private const val VERTEX_BODY = """
 uniform mat4 uMvp;
@@ -271,13 +277,14 @@ out vec2 vUv;
 out vec3 vFragPos;
 
 void main() {
-    vFragPos = (uModel * vec4(aPosition, 1.0)).xyz;
     vNormal = (uModel * vec4(aNormal, 0.0)).xyz;
+    vFragPos = (uModel * vec4(aPosition, 1.0)).xyz;
     vUv = aUv;
     gl_Position = uMvp * vec4(aPosition, 1.0);
 }
         """
-        private const val FRAGMENT_BODY = """
+
+        private val FRAGMENT_BODY = """
 precision mediump float;
 
 in vec3 vNormal;
@@ -287,30 +294,28 @@ uniform sampler2D uDayTex;
 uniform sampler2D uNightTex;
 uniform vec3 uSunDir;
 uniform float uNight;
+uniform vec3 uCameraPos;
 
 out vec4 fragColor;
 
 void main() {
-    vec3 n = normalize(vNormal);
-    vec3 sun = normalize(uSunDir);
-    float ndl = dot(n, sun);
-    float dayAmount = smoothstep(-0.08, 0.25, ndl);
-    float band = smoothstep(-0.08, 0.02, ndl) * (1.0 - smoothstep(0.02, 0.35, ndl));
+    float dayAmount = smoothstep(${EarthShaderConstants.DAY_NIGHT_TERMINATOR_LOW}, ${EarthShaderConstants.DAY_NIGHT_TERMINATOR_HIGH}, dot(normalize(vNormal), normalize(uSunDir)));
+    float band = smoothstep(${EarthShaderConstants.NIGHT_BAND_LOW}, ${EarthShaderConstants.NIGHT_BAND_MID}, dot(normalize(vNormal), normalize(uSunDir))) * (1.0 - smoothstep(${EarthShaderConstants.NIGHT_BAND_MID}, ${EarthShaderConstants.NIGHT_BAND_HIGH}, dot(normalize(vNormal), normalize(uSunDir))));
 
     vec3 dayTex = texture(uDayTex, vUv).rgb;
     vec3 dayCol = dayTex * (0.12 + 1.05 * dayAmount);
     dayCol += vec3(0.38, 0.13, 0.03) * band * (0.35 + 0.65 * dayAmount);
 
-    float ocean = smoothstep(0.008, 0.07, dayTex.b - max(dayTex.r, dayTex.g));
-    vec3 hv = normalize(sun + vec3(0.0, 0.0, 1.0));
-    float spec = pow(max(dot(n, hv), 0.0), 36.0) * ocean * dayAmount;
-    dayCol += vec3(1.0, 0.95, 0.85) * (0.7 * spec);
+    float ocean = smoothstep(${EarthShaderConstants.OCEAN_THRESHOLD_LOW}, ${EarthShaderConstants.OCEAN_THRESHOLD_HIGH}, dayTex.b - max(dayTex.r, dayTex.g));
+    vec3 hv = normalize(normalize(uSunDir) + normalize(uCameraPos - vFragPos));
+    float spec = pow(max(dot(normalize(vNormal), hv), 0.0), ${EarthShaderConstants.SPECULAR_POWER}) * ocean * dayAmount;
+    dayCol += vec3(1.0, 0.95, 0.85) * (${EarthShaderConstants.GLITTER} * spec);
 
     vec3 nightTex = texture(uNightTex, vUv).rgb;
-    vec3 nightCol = nightTex * (uNight * 2.5) + vec3(0.004, 0.007, 0.016);
+    vec3 nightCol = nightTex * (${EarthShaderConstants.NIGHT_MULTIPLIER} * uNight) + vec3(${EarthShaderConstants.AMBIENT_NIGHT_R}, ${EarthShaderConstants.AMBIENT_NIGHT_G}, ${EarthShaderConstants.AMBIENT_NIGHT_B});
     vec3 col = mix(nightCol, dayCol, dayAmount);
     fragColor = vec4(col, 1.0);
 }
-        """
+    """
     }
 }
