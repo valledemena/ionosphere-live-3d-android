@@ -27,7 +27,11 @@ import com.valledemena.ionosphere.gl.GlobeSurfaceView
  * `Choreographer` del `GlobeSurfaceView` es el único que pide frames.
  */
 @Composable
-fun GlobeScreen(modifier: Modifier = Modifier) {
+fun GlobeScreen(
+    modifier: Modifier = Modifier,
+    atmoSteps: Int? = null,
+    atmoLightSteps: Int? = null,
+) {
     val lifecycleOwner = LocalLifecycleOwner.current
     var view by remember { mutableStateOf<GlobeSurfaceView?>(null) }
 
@@ -63,7 +67,10 @@ fun GlobeScreen(modifier: Modifier = Modifier) {
     Box(modifier = modifier.fillMaxSize()) {
         AndroidView(
             modifier = Modifier.fillMaxSize(),
-            factory = { context -> GlobeSurfaceView(context).also { view = it } },
+            factory = { context ->
+                GlobeSurfaceView(context, atmoSteps = atmoSteps, atmoLightSteps = atmoLightSteps)
+                    .also { view = it }
+            },
         )
         // Panel de diagnostico (debug-only; en release dataPanelFactory es null
         // y este call es un no-op - ver DataPanelHost.kt).
