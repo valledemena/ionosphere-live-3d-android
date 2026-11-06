@@ -24,9 +24,15 @@ import javax.microedition.khronos.egl.EGLDisplay
 class GlobeSurfaceView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
+    atmoSteps: Int? = null,
+    atmoLightSteps: Int? = null,
 ) : GLSurfaceView(context, attrs) {
 
-    private val renderer = GlobeRenderer(context)
+    private val renderer = GlobeRenderer(
+        context,
+        atmoStepsOverride = atmoSteps,
+        atmoLightStepsOverride = atmoLightSteps,
+    )
     private val choreographer = Choreographer.getInstance()
     private var running = false
 

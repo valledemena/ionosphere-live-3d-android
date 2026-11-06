@@ -31,7 +31,11 @@ import javax.microedition.khronos.opengles.GL10
  * R1 dibuja un frame solo cuando hace falta (`RENDERMODE_WHEN_DIRTY`): el dueño
  * del ciclo de vida pide frames a un techo de FPS mientras la escena está viva.
  */
-class GlobeRenderer(private val context: Context) : GLSurfaceView.Renderer {
+class GlobeRenderer(
+    private val context: Context,
+    atmoStepsOverride: Int? = null,
+    atmoLightStepsOverride: Int? = null,
+) : GLSurfaceView.Renderer {
 
     private val mesh = SphereMesh.unitSphere()
 
@@ -67,6 +71,10 @@ class GlobeRenderer(private val context: Context) : GLSurfaceView.Renderer {
     private var uAtmoIntensity = 0
     private var uAtmoSteps = 0
     private var uAtmoLightSteps = 0
+
+    // Rider K3: defaults de pin, override solo si la Activity resolvio un extra en rango.
+    private val atmoSteps = atmoStepsOverride ?: AtmoShaderConstants.DEFAULT_STEPS
+    private val atmoLightSteps = atmoLightStepsOverride ?: AtmoShaderConstants.DEFAULT_LIGHT_STEPS
 
     private val projection = FloatArray(16)
     private val view = FloatArray(16)
@@ -121,8 +129,8 @@ private val clock = RotationClock()
         GLES20.glUseProgram(atmoProgram)
         pushSunCamera(uAtmoSunDir, uAtmoCameraPos)
         GLES20.glUniform1f(uAtmoIntensity, 1.0f)
-        GLES20.glUniform1f(uAtmoSteps, AtmoShaderConstants.DEFAULT_STEPS.toFloat())
-        GLES20.glUniform1f(uAtmoLightSteps, AtmoShaderConstants.DEFAULT_LIGHT_STEPS.toFloat())
+        GLES20.glUniform1f(uAtmoSteps, atmoSteps.toFloat())
+        GLES20.glUniform1f(uAtmoLightSteps, atmoLightSteps.toFloat())
         GLES20.glUseProgram(0)
         textureId = uploadTexture(PlaceholderGlobeTexture.TIER_MEDIUM_WIDTH, PlaceholderGlobeTexture.TIER_MEDIUM_HEIGHT)
         nightTextureId = uploadTextureFromBitmap(R.drawable.earth_night)
@@ -132,7 +140,7 @@ private val clock = RotationClock()
         Log.i(
             TAG,
             "Superficie creada (creación nº ${clock.surfaceCreations}): ${mesh.vertexCount} vértices, ${mesh.triangleCount} triángulos, " +
-                "textura ${textureWidth}x${textureHeight}, GL ${GLES20.glGetString(GLES20.GL_VERSION)}",
+                "textura ${textureWidth}x${textureHeight}, atmo ${atmoSteps}/${atmoLightSteps}, GL ${GLES20.glGetString(GLES20.GL_VERSION)}",
         )
     }
 
