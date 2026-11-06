@@ -268,8 +268,10 @@ in vec3 aNormal;
 in vec2 aUv;
 out vec3 vNormal;
 out vec2 vUv;
+out vec3 vFragPos;
 
 void main() {
+    vFragPos = (uModel * vec4(aPosition, 1.0)).xyz;
     vNormal = (uModel * vec4(aNormal, 0.0)).xyz;
     vUv = aUv;
     gl_Position = uMvp * vec4(aPosition, 1.0);
@@ -280,6 +282,7 @@ precision mediump float;
 
 in vec3 vNormal;
 in vec2 vUv;
+in vec3 vFragPos;
 uniform sampler2D uDayTex;
 uniform sampler2D uNightTex;
 uniform vec3 uSunDir;
