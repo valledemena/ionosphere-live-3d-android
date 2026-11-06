@@ -26,8 +26,8 @@ import javax.microedition.khronos.opengles.GL10
 /**
  * Renderer propio sobre GLES 3.x: un globo texturizado, sin motor de terceros.
  *
- * R1 dibuja un frame solo cuando hace falta (`RENDERMODE_WHEN_DIRTY`): el dueo
- * del ciclo de vida pide frames a un techo de FPS mientras la escena est viva.
+ * R1 dibuja un frame solo cuando hace falta (`RENDERMODE_WHEN_DIRTY`): el dueño
+ * del ciclo de vida pide frames a un techo de FPS mientras la escena está viva.
  */
 class GlobeRenderer(private val context: Context) : GLSurfaceView.Renderer {
 
@@ -65,10 +65,10 @@ private val clock = RotationClock()
     private var textureWidth = 0
     private var textureHeight = 0
 
-    /** N de frames dibujados desde que se cre la superficie. Solo diagnstico. */
+    /** Nº de frames dibujados desde que se creó la superficie. Solo diagnóstico. */
     val framesDrawn: Int get() = frameCount
 
-    /** Tamao de la textura cargada. */
+    /** Tamaño de la textura cargada. */
     val loadedTextureSize: IntArray get() = intArrayOf(textureWidth, textureHeight)
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
@@ -96,7 +96,7 @@ private val clock = RotationClock()
 
         Log.i(
             TAG,
-            "Superficie creada (creacin n ${clock.surfaceCreations}): ${mesh.vertexCount} vrtices, ${mesh.triangleCount} tringulos, " +
+            "Superficie creada (creación nº ${clock.surfaceCreations}): ${mesh.vertexCount} vértices, ${mesh.triangleCount} triángulos, " +
                 "textura ${textureWidth}x${textureHeight}, GL ${GLES20.glGetString(GLES20.GL_VERSION)}",
         )
     }
@@ -115,7 +115,7 @@ private val clock = RotationClock()
         val angle = clock.angleAt(SystemClock.uptimeMillis())
 
         Matrix.setIdentityM(model, 0)
-        Matrix.rotateM(model, 0, -23.4f, 0f, 0f, 1f)   // inclinacin axial declarada
+        Matrix.rotateM(model, 0, -23.4f, 0f, 0f, 1f)   // inclinación axial declarada
         Matrix.rotateM(model, 0, angle, 0f, 1f, 0f)
         Matrix.multiplyMM(mvp, 0, viewProjection, 0, model, 0)
 
