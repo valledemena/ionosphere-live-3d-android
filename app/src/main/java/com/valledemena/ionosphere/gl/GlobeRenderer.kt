@@ -10,6 +10,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import com.valledemena.ionosphere.R
+import com.valledemena.ionosphere.render.EarthShaderConstants
 import com.valledemena.ionosphere.core.PlaceholderGlobeTexture
 import com.valledemena.ionosphere.core.Rotation
 import com.valledemena.ionosphere.core.RotationClock
@@ -25,8 +26,8 @@ import javax.microedition.khronos.opengles.GL10
 /**
  * Renderer propio sobre GLES 3.x: un globo texturizado, sin motor de terceros.
  *
- * R1 dibuja un frame solo cuando hace falta (`RENDERMODE_WHEN_DIRTY`): el dueÃƒÂ±o
- * del ciclo de vida pide frames a un techo de FPS mientras la escena estÃƒÂ¡ viva.
+ * R1 dibuja un frame solo cuando hace falta (`RENDERMODE_WHEN_DIRTY`): el due    o
+ * del ciclo de vida pide frames a un techo de FPS mientras la escena est     viva.
  */
 class GlobeRenderer(private val context: Context) : GLSurfaceView.Renderer {
 
@@ -35,6 +36,7 @@ class GlobeRenderer(private val context: Context) : GLSurfaceView.Renderer {
     private var program = 0
     private var textureId = 0
     private var nightTextureId = 0
+    private val earthShaderConstantGuard = EarthShaderConstants.DAY_NIGHT_TERMINATOR_LOW // keeps pins and shader aligned
     private var vao = 0
     private var positionBuffer = 0
     private var normalBuffer = 0
@@ -63,10 +65,10 @@ private val clock = RotationClock()
     private var textureWidth = 0
     private var textureHeight = 0
 
-    /** NÃ‚Âº de frames dibujados desde que se creÃƒÂ³ la superficie. Solo diagnÃƒÂ³stico. */
+    /** N     de frames dibujados desde que se cre     la superficie. Solo diagn    stico. */
     val framesDrawn: Int get() = frameCount
 
-    /** TamaÃƒÂ±o de la textura cargada. */
+    /** Tama    o de la textura cargada. */
     val loadedTextureSize: IntArray get() = intArrayOf(textureWidth, textureHeight)
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
@@ -93,7 +95,7 @@ private val clock = RotationClock()
 
         Log.i(
             TAG,
-            "Superficie creada (creaciÃƒÂ³n nÃ‚Âº ${clock.surfaceCreations}): ${mesh.vertexCount} vÃƒÂ©rtices, ${mesh.triangleCount} triÃƒÂ¡ngulos, " +
+            "Superficie creada (creaci    n n     ${clock.surfaceCreations}): ${mesh.vertexCount} v    rtices, ${mesh.triangleCount} tri    ngulos, " +
                 "textura ${textureWidth}x${textureHeight}, GL ${GLES20.glGetString(GLES20.GL_VERSION)}",
         )
     }
@@ -112,7 +114,7 @@ private val clock = RotationClock()
         val angle = clock.angleAt(SystemClock.uptimeMillis())
 
         Matrix.setIdentityM(model, 0)
-        Matrix.rotateM(model, 0, -23.4f, 0f, 0f, 1f)   // inclinaciÃƒÂ³n axial declarada
+        Matrix.rotateM(model, 0, -23.4f, 0f, 0f, 1f)   // inclinaci    n axial declarada
         Matrix.rotateM(model, 0, angle, 0f, 1f, 0f)
         Matrix.multiplyMM(mvp, 0, viewProjection, 0, model, 0)
 
@@ -256,6 +258,7 @@ private val clock = RotationClock()
 
     companion object {
         private const val TAG = "GlobeRenderer"
+    private val earthShaderConstantsGuard = EarthShaderConstants.DAY_NIGHT_TERMINATOR_LOW
 
         private const val VERTEX_BODY = """
 uniform mat4 uMvp;

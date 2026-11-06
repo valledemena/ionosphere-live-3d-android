@@ -16,8 +16,8 @@ import javax.microedition.khronos.egl.EGLDisplay
  *
  * - `RENDERMODE_WHEN_DIRTY`: solo se dibuja cuando alguien lo pide.
  * - Un `Choreographer.FrameCallback` pide frames con un techo de
- *   [Rotation.TARGET_FPS] mientras la escena está viva (`start()`).
- * - `stop()` corta el callback: en background no se dibuja ni se consume batería.
+ *   [Rotation.TARGET_FPS] mientras la escena est  viva (`start()`).
+ * - `stop()` corta el callback: en background no se dibuja ni se consume bater a.
  * - El contexto EGL se pide 3.1 y se acepta 3.0 como respaldo (el cuerpo de los
  *   shaders es el mismo; la cabecera la elige [ShaderProgram]).
  */
@@ -72,7 +72,7 @@ class GlobeSurfaceView @JvmOverloads constructor(
     }
 
     /**
-     * Contexto EGL 3.1 con respaldo a 3.0. Pedir 3.1 explícitamente evita
+     * Contexto EGL 3.1 con respaldo a 3.0. Pedir 3.1 expl citamente evita
      * depender del valor por defecto del driver.
      */
     private class Es31ContextFactory : EGLContextFactory {
