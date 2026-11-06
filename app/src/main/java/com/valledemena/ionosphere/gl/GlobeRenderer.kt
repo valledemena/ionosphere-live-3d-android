@@ -6,6 +6,10 @@ import android.opengl.GLSurfaceView
 import android.opengl.Matrix
 import android.os.SystemClock
 import android.util.Log
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import com.valledemena.ionosphere.R
 import com.valledemena.ionosphere.core.PlaceholderGlobeTexture
 import com.valledemena.ionosphere.core.Rotation
 import com.valledemena.ionosphere.core.RotationClock
@@ -24,12 +28,13 @@ import javax.microedition.khronos.opengles.GL10
  * R1 dibuja un frame solo cuando hace falta (`RENDERMODE_WHEN_DIRTY`): el dueño
  * del ciclo de vida pide frames a un techo de FPS mientras la escena está viva.
  */
-class GlobeRenderer : GLSurfaceView.Renderer {
+class GlobeRenderer(private val context: Context) : GLSurfaceView.Renderer {
 
     private val mesh = SphereMesh.unitSphere()
 
     private var program = 0
     private var textureId = 0
+    private var nightTextureId = 0
     private var vao = 0
     private var positionBuffer = 0
     private var normalBuffer = 0
@@ -40,6 +45,10 @@ class GlobeRenderer : GLSurfaceView.Renderer {
     private var aNormal = -1
     private var aUv = -1
     private var uMvp = -1
+    private var uDayTex = -1
+    private var uNightTex = -1
+    private var uNight = -1
+    private var uSunDir = -1
 
     private val projection = FloatArray(16)
     private val view = FloatArray(16)
@@ -69,9 +78,14 @@ private val clock = RotationClock()
         aNormal = GLES20.glGetAttribLocation(program, "aNormal")
         aUv = GLES20.glGetAttribLocation(program, "aUv")
         uMvp = GLES20.glGetUniformLocation(program, "uMvp")
+        uDayTex = GLES20.glGetUniformLocation(program, "uDayTex")
+        uNightTex = GLES20.glGetUniformLocation(program, "uNightTex")
+        uNight = GLES20.glGetUniformLocation(program, "uNight")
+        uSunDir = GLES20.glGetUniformLocation(program, "uSunDir")
 
         uploadMesh()
         textureId = uploadTexture(PlaceholderGlobeTexture.TIER_MEDIUM_WIDTH, PlaceholderGlobeTexture.TIER_MEDIUM_HEIGHT)
+        nightTextureId = uploadTextureFromBitmap(R.drawable.earth_night)
 
         clock.onSurfaceCreated(SystemClock.uptimeMillis())
 
@@ -103,8 +117,16 @@ private val clock = RotationClock()
         GLES20.glUseProgram(program)
         GLES20.glUniformMatrix4fv(uMvp, 1, false, mvp, 0)
 
+        GLES20.glUniform1i(uDayTex, 0)
+        GLES20.glUniform1i(uNightTex, 1)
+        GLES20.glUniform1f(uNight, 0.45f)
+        GLES20.glUniform3f(uSunDir, 0.6f, 0.35f, 0.72f)
+
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId)
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE1)
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, nightTextureId)
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
 
         GLES30.glBindVertexArray(vao)
         GLES20.glDrawElements(GLES20.GL_TRIANGLES, mesh.indices.size, GLES20.GL_UNSIGNED_SHORT, 0)
@@ -186,6 +208,34 @@ private val clock = RotationClock()
         textureHeight = height
         return id
     }
+    private fun uploadTextureFromBitmap(resId: Int): Int {
+        val bmp = BitmapFactory.decodeResource(context.resources, resId)
+        val pixels = IntArray(bmp.width * bmp.height)
+        bmp.getPixels(pixels, 0, bmp.width, 0, 0, bmp.width, bmp.height)
+        val buffer = ByteBuffer.allocateDirect(pixels.size * 4).order(ByteOrder.nativeOrder())
+        for (px in pixels) {
+            buffer.put(((px shr 16) and 0xFF).toByte())
+            buffer.put(((px shr 8) and 0xFF).toByte())
+            buffer.put((px and 0xFF).toByte())
+            buffer.put(((px ushr 24) and 0xFF).toByte())
+        }
+        buffer.position(0)
+        val textures = IntArray(1)
+        GLES20.glGenTextures(1, textures, 0)
+        val tid = textures[0]
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, tid)
+        GLES20.glTexImage2D(
+            GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA, bmp.width, bmp.height,
+            0, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, buffer
+        )
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_REPEAT)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE)
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0)
+        bmp.recycle()
+        return tid
+    }
 
     private fun FloatArray.toFloatBuffer(): FloatBuffer =
         ByteBuffer.allocateDirect(size * 4)
@@ -224,16 +274,25 @@ precision mediump float;
 
 in vec3 vNormal;
 in vec2 vUv;
-uniform sampler2D uTexture;
+uniform sampler2D uDayTex;
+uniform sampler2D uNightTex;
+uniform vec3 uSunDir;
+uniform float uNight;
+
 out vec4 fragColor;
 
 void main() {
     vec3 n = normalize(vNormal);
-    vec3 lightDir = normalize(vec3(0.6, 0.35, 0.72));
-    float diffuse = clamp(dot(n, lightDir), 0.0, 1.0);
-    vec3 albedo = texture(uTexture, vUv).rgb;
-    fragColor = vec4(albedo * (0.18 + 0.95 * diffuse), 1.0);
+    vec3 sun = normalize(uSunDir);
+    float ndl = dot(n, sun);
+    float dayAmount = clamp((ndl + 0.08) / 0.33, 0.0, 1.0);
+    vec3 dayTex = texture(uDayTex, vUv).rgb;
+    vec3 dayCol = dayTex * (0.12 + 1.05 * dayAmount);
+    vec3 nightTex = texture(uNightTex, vUv).rgb;
+    vec3 nightCol = nightTex * (uNight * 2.5) + vec3(0.004, 0.007, 0.016);
+    vec3 col = mix(nightCol, dayCol, dayAmount);
+    fragColor = vec4(col, 1.0);
 }
-"""
+        """
     }
 }

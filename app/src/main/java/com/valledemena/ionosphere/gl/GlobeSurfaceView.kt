@@ -26,7 +26,7 @@ class GlobeSurfaceView @JvmOverloads constructor(
     attrs: AttributeSet? = null,
 ) : GLSurfaceView(context, attrs) {
 
-    private val renderer = GlobeRenderer()
+    private val renderer = GlobeRenderer(context)
     private val choreographer = Choreographer.getInstance()
     private var running = false
 
