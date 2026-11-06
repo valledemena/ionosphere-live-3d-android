@@ -11,6 +11,8 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import com.valledemena.ionosphere.R
 import com.valledemena.ionosphere.core.PlaceholderGlobeTexture
+import com.valledemena.ionosphere.render.AtmoShaderConstants
+import com.valledemena.ionosphere.render.AtmoShaderSource
 import com.valledemena.ionosphere.render.EarthShaderConstants
 import com.valledemena.ionosphere.core.Rotation
 import com.valledemena.ionosphere.core.RotationClock
@@ -53,6 +55,19 @@ class GlobeRenderer(private val context: Context) : GLSurfaceView.Renderer {
     private var uModel = -1
     private var uCameraPos = -1
 
+    // R3.2b-iii: shell atmosferico. Programa y VAO propios (attr locations por programa).
+    private var atmoProgram = 0
+    private var atmoVao = 0
+    private var atmoPositionBuffer = 0
+    private var aAtmoPosition = 0
+    private var uAtmoMvp = 0
+    private var uAtmoModel = 0
+    private var uAtmoSunDir = 0
+    private var uAtmoCameraPos = 0
+    private var uAtmoIntensity = 0
+    private var uAtmoSteps = 0
+    private var uAtmoLightSteps = 0
+
     private val projection = FloatArray(16)
     private val view = FloatArray(16)
     private val model = FloatArray(16)
@@ -88,7 +103,27 @@ private val clock = RotationClock()
         uModel = GLES20.glGetUniformLocation(program, "uModel")
         uCameraPos = GLES20.glGetUniformLocation(program, "uCameraPos")
 
+        // Programa del shell: fuente sellada en AtmoShaderSource (golden 967f867).
+        atmoProgram = ShaderProgram.create(AtmoShaderSource.ATMO_VERT, AtmoShaderSource.ATMO_FRAG)
+        aAtmoPosition = GLES20.glGetAttribLocation(atmoProgram, "aPosition")
+        uAtmoMvp = GLES20.glGetUniformLocation(atmoProgram, "uMvp")
+        uAtmoModel = GLES20.glGetUniformLocation(atmoProgram, "uModel")
+        uAtmoSunDir = GLES20.glGetUniformLocation(atmoProgram, "uSunDir")
+        uAtmoCameraPos = GLES20.glGetUniformLocation(atmoProgram, "uCameraPos")
+        uAtmoIntensity = GLES20.glGetUniformLocation(atmoProgram, "uIntensity")
+        uAtmoSteps = GLES20.glGetUniformLocation(atmoProgram, "uSteps")
+        uAtmoLightSteps = GLES20.glGetUniformLocation(atmoProgram, "uLightSteps")
+
         uploadMesh()
+        uploadAtmoMesh()
+
+        // Uniforms estaticos del shell: 12 pasos / 4 pasos de luz, desde pins (web builders.ts L130-131).
+        GLES20.glUseProgram(atmoProgram)
+        pushSunCamera(uAtmoSunDir, uAtmoCameraPos)
+        GLES20.glUniform1f(uAtmoIntensity, 1.0f)
+        GLES20.glUniform1f(uAtmoSteps, AtmoShaderConstants.DEFAULT_STEPS.toFloat())
+        GLES20.glUniform1f(uAtmoLightSteps, AtmoShaderConstants.DEFAULT_LIGHT_STEPS.toFloat())
+        GLES20.glUseProgram(0)
         textureId = uploadTexture(PlaceholderGlobeTexture.TIER_MEDIUM_WIDTH, PlaceholderGlobeTexture.TIER_MEDIUM_HEIGHT)
         nightTextureId = uploadTextureFromBitmap(R.drawable.earth_night)
 
@@ -125,9 +160,8 @@ private val clock = RotationClock()
         GLES20.glUniform1i(uDayTex, 0)
         GLES20.glUniform1i(uNightTex, 1)
         GLES20.glUniform1f(uNight, EarthShaderConstants.NIGHT_DEFAULT)
-        GLES20.glUniform3f(uSunDir, 0.6f, 0.35f, 0.72f)
+        pushSunCamera(uSunDir, uCameraPos)
         GLES20.glUniformMatrix4fv(uModel, 1, false, model, 0)
-        GLES20.glUniform3f(uCameraPos, 0.0f, 0.0f, 3.2f)
 
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId)
@@ -139,13 +173,33 @@ private val clock = RotationClock()
         GLES20.glDrawElements(GLES20.GL_TRIANGLES, mesh.indices.size, GLES20.GL_UNSIGNED_SHORT, 0)
         GLES30.glBindVertexArray(0)
 
+        // Pase del shell (atmosfera): aditivo, BackSide espejado con cull front,
+        // sin escribir z (mirror de web builders.ts L122-138). Restauracion completa
+        // de estado: culling vuelve a desactivado (estado global del renderer),
+        // depth mask y blend vuelven a sus valores previos al pase.
+        GLES20.glUseProgram(atmoProgram)
+        GLES20.glUniformMatrix4fv(uAtmoMvp, 1, false, mvp, 0)
+        GLES20.glUniformMatrix4fv(uAtmoModel, 1, false, model, 0)
+        pushSunCamera(uAtmoSunDir, uAtmoCameraPos)
+
+        GLES20.glEnable(GLES20.GL_BLEND)
+        GLES20.glBlendFunc(GLES20.GL_ONE, GLES20.GL_ONE)
+        GLES20.glDepthMask(false)
+        GLES20.glEnable(GLES20.GL_CULL_FACE)
+        GLES20.glCullFace(GLES20.GL_FRONT)
+        GLES30.glBindVertexArray(atmoVao)
+        GLES20.glDrawElements(GLES20.GL_TRIANGLES, mesh.indices.size, GLES20.GL_UNSIGNED_SHORT, 0)
+        GLES30.glBindVertexArray(0)
+        GLES20.glDisable(GLES20.GL_CULL_FACE)
+        GLES20.glDepthMask(true)
+        GLES20.glDisable(GLES20.GL_BLEND)
+
         frameCount++
     }
 
     private fun uploadMesh() {
         vao = IntArray(1).also { GLES30.glGenVertexArrays(1, it, 0) }[0]
         GLES30.glBindVertexArray(vao)
-
         positionBuffer = uploadFloatAttribute(aPosition, mesh.positions, 3)
         normalBuffer = uploadFloatAttribute(aNormal, mesh.normals, 3)
         uvBuffer = uploadFloatAttribute(aUv, mesh.uvs, 2)
@@ -162,6 +216,27 @@ private val clock = RotationClock()
         )
 
         GLES30.glBindVertexArray(0)
+    }
+
+    /** Malla del shell: la misma esfera unitaria, escalada por el pin ATM_R. */
+    private fun uploadAtmoMesh() {
+        atmoVao = IntArray(1).also { GLES30.glGenVertexArrays(1, it, 0) }[0]
+        GLES30.glBindVertexArray(atmoVao)
+
+        val scaled = mesh.positions.map { it * AtmoShaderConstants.ATM_R }.toFloatArray()
+        atmoPositionBuffer = uploadFloatAttribute(aAtmoPosition, scaled, 3)
+
+        // Indices compartidos con la malla del planeta (mismo teselado): el ELEMENT
+        // buffer queda vinculado dentro de este VAO.
+        GLES20.glBindBuffer(GLES20.GL_ELEMENT_ARRAY_BUFFER, indexBuffer)
+
+        GLES30.glBindVertexArray(0)
+    }
+
+    /** Sol y camara: mismos valores para los dos programas (Earth y shell), una sola fuente. */
+    private fun pushSunCamera(uSunDir: Int, uCameraPos: Int) {
+        GLES20.glUniform3f(uSunDir, 0.6f, 0.35f, 0.72f)
+        GLES20.glUniform3f(uCameraPos, 0.0f, 0.0f, 3.2f)
     }
 
     private fun uploadFloatAttribute(location: Int, data: FloatArray, components: Int): Int {
