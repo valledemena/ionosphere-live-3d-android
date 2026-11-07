@@ -1,4 +1,4 @@
-package com.valledemena.ionosphere.debug.diagnostics
+package com.valledemena.ionosphere.ui.hud
 
 /**
  * Formateador puro de edad del dato (deterministico, sin estado, sin Android).

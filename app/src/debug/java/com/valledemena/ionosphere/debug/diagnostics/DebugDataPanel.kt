@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.valledemena.ionosphere.data.net.Outcome
+import com.valledemena.ionosphere.ui.hud.AgeLabel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 

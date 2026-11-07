@@ -1,4 +1,4 @@
-package com.valledemena.ionosphere.debug.diagnostics
+package com.valledemena.ionosphere.ui.hud
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
