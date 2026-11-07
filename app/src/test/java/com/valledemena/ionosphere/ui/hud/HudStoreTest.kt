@@ -3,6 +3,14 @@ package com.valledemena.ionosphere.ui.hud
 import com.valledemena.ionosphere.data.model.DstData
 import com.valledemena.ionosphere.data.model.IonosondeData
 import com.valledemena.ionosphere.data.model.SpaceWeatherData
+import com.valledemena.ionosphere.data.model.SpaceWeatherForecast
+import com.valledemena.ionosphere.data.model.SpaceWeatherF107
+import com.valledemena.ionosphere.data.model.SpaceWeatherKp
+import com.valledemena.ionosphere.data.model.SpaceWeatherMag
+import com.valledemena.ionosphere.data.model.SpaceWeatherProtons
+import com.valledemena.ionosphere.data.model.SpaceWeatherSunspots
+import com.valledemena.ionosphere.data.model.SpaceWeatherWind
+import com.valledemena.ionosphere.data.model.SpaceWeatherXray
 import com.valledemena.ionosphere.data.net.Outcome
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

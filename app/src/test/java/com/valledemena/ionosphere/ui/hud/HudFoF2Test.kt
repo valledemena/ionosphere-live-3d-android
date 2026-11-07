@@ -58,8 +58,8 @@ class HudFoF2Test {
         val rows = HudFoF2.rows(
             listOf(station("EA036", 2.9), station("PQ052", null), station("EB040", 2.2)),
         )
-        assertEquals(listOf("EB040", "EA036", "PQ052"), rows.map { it.code })
-        assertEquals("2.20 MHz", rows[0].display)
+        assertEquals(listOf("EA036", "EB040", "PQ052"), rows.map { it.code })
+        assertEquals("2.90 MHz", rows[0].display)
         assertEquals("unavailable", rows[2].display)
     }
 
