@@ -2,21 +2,26 @@ package com.valledemena.ionosphere.ui
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.valledemena.ionosphere.gl.GlobeSurfaceView
+import com.valledemena.ionosphere.ui.hud.HudPanel
+import com.valledemena.ionosphere.ui.hud.HudStore
 
 /**
- * Globo a pantalla completa, sin HUD (R3).
+ * Globo a pantalla completa + HUD de produccion (R3.3).
  *
  * El ciclo de vida manda:
  *  - `ON_RESUME` reanuda el contexto GL; `ON_PAUSE` lo suspende
@@ -31,6 +36,7 @@ fun GlobeScreen(
     modifier: Modifier = Modifier,
     atmoSteps: Int? = null,
     atmoLightSteps: Int? = null,
+    hudStore: HudStore? = null,
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
     var view by remember { mutableStateOf<GlobeSurfaceView?>(null) }
@@ -72,6 +78,16 @@ fun GlobeScreen(
                     .also { view = it }
             },
         )
+        // HUD de produccion (R3.3): tres secciones sobre el SurfaceView.
+        // El grafo lo construye `MainActivity`; aqui solo se presenta.
+        if (hudStore != null) {
+            HudPanel(
+                store = hudStore,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(10.dp),
+            )
+        }
         // Panel de diagnostico (debug-only; en release dataPanelFactory es null
         // y este call es un no-op - ver DataPanelHost.kt).
         DataPanelHost()
