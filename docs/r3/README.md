@@ -1,11 +1,11 @@
 # R3 - Escena v1 anchor
 
 R3 es el HUD visual de datos + luces nocturnas + shell + ionosondas + HUD.
-Estado del tablero (closed dates 2026-11-06):
+Estado del tablero (closed dates 2026-11-07):
 - R3.0 web texturas NASA del web: commit 8cdc334 (web repo).
 - R3.1 Android colormaps espejo: commit 72612b9 (#16 merged).
-- R3.2 en arranque: luces nocturnas + shell atmosferico + texture decisions.
-- R3.3 pendiente: HUD produccion Kp/Dst/foF2 + primeros consumidores release.
+- R3.2 cerrado 2026-11-07: luces nocturnas + shell atmosferico (golden r32b2/b3; #23 e9e244c + #24 f57ce7c -> d246127).
+- R3.3 cerrado 2026-11-07: HUD produccion Kp/Dst/foF2 + primeros consumidores release (fila #25/#26 -> 81fc214; gate de dispositivo FIRME; sesion movil N/A declarada sin SIM).
 - R3.4 pendiente: capa ionosondas + pointSize clamp 2-30 tests.
 
 Cross-reference: #15 tracker
