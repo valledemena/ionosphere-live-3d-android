@@ -43,7 +43,7 @@ class Kc2gFailoverTest {
                 return HttpResult(200, "")
             }
         }
-        val adapter = IonosondeAdapter(http, stations = listOf("AA343"), anchorStations = emptySet())
+        val adapter = IonosondeAdapter(http, clock = { java.time.Instant.parse("2026-11-07T03:20:00Z").toEpochMilli() }, stations = listOf("AA343"), anchorStations = emptySet())
         val result = adapter.fetch()
         assertEquals("kcCalled=$kcCalled", "GIRO DIDBase (live, kc2g failover reserved)", (result as Outcome.Live<*>).source)
         assertEquals(false, kcCalled)
@@ -59,7 +59,7 @@ class Kc2gFailoverTest {
                 return HttpResult(504, "")
             }
         }
-        val adapter = IonosondeAdapter(http, stations = listOf("AA343"), anchorStations = emptySet())
+        val adapter = IonosondeAdapter(http, clock = { java.time.Instant.parse("2026-11-07T03:20:00Z").toEpochMilli() }, stations = listOf("AA343"), anchorStations = emptySet())
         val r = adapter.fetch()
         assertTrue(kcCalled)
         assertTrue(r is Outcome.Live)
@@ -74,7 +74,7 @@ class Kc2gFailoverTest {
                 return HttpResult(504, "")
             }
         }
-        val r = IonosondeAdapter(http, stations = listOf("AA343"), anchorStations = emptySet()).fetch()
+        val r = IonosondeAdapter(http, clock = { java.time.Instant.parse("2026-11-07T03:20:00Z").toEpochMilli() }, stations = listOf("AA343"), anchorStations = emptySet()).fetch()
         val s = (r as Outcome.Live<*>).value as com.valledemena.ionosphere.data.model.IonosondeData
         assertEquals("AU930", s.stations[0].code)
         assertEquals(28.827, s.stations[0].muf3000!!, 0.001)
@@ -96,7 +96,7 @@ class Kc2gFailoverTest {
                 return HttpResult(504, "")
             }
         }
-        val adapter = IonosondeAdapter(http, stations = listOf("AA343"), anchorStations = emptySet())
+        val adapter = IonosondeAdapter(http, clock = { java.time.Instant.parse("2026-11-07T03:20:00Z").toEpochMilli() }, stations = listOf("AA343"), anchorStations = emptySet())
         val r = adapter.fetch()
         assertTrue(r is Outcome.Live)
         assertEquals("unavailable", (r as Outcome.Live<*>).source)
@@ -110,7 +110,7 @@ class Kc2gFailoverTest {
                 return HttpResult(504, "")
             }
         }
-        val adapter = IonosondeAdapter(http, stations = listOf("AA343"), anchorStations = emptySet())
+        val adapter = IonosondeAdapter(http, clock = { java.time.Instant.parse("2026-11-07T03:20:00Z").toEpochMilli() }, stations = listOf("AA343"), anchorStations = emptySet())
         val r = adapter.fetch()
         assertTrue(r is Outcome.Failed)
     }
@@ -132,19 +132,44 @@ class Kc2gFailoverTest {
                 return HttpResult(404, "")
             }
         }
-        val adapter = IonosondeAdapter(http, cache = cache, stations = listOf("AA343"), anchorStations = emptySet())
+        val adapter = IonosondeAdapter(http, cache = cache, clock = { java.time.Instant.parse("2026-11-07T03:20:00Z").toEpochMilli() }, stations = listOf("AA343"), anchorStations = emptySet())
         val r = adapter.fetch()
         assertTrue(r is Outcome.Cached)
         assertTrue((r as Outcome.Cached<*>).stale)
     }
 
-    @Test fun sourceStringReferencesKc2gFallback() {
-        assertTrue(com.valledemena.ionosphere.data.source.ionosondes.IonosondeAdapter::class.simpleName != null)
-        assertEquals("kc2g fallback", "kc2g fallback")
+    @Test fun kc2gFallbackSourceFlowsThroughOutcome() = runBlocking {
+        val http = object : com.valledemena.ionosphere.data.net.HttpClient {
+            override suspend fun get(url: String, timeoutMs: Int): com.valledemena.ionosphere.data.net.HttpResult {
+                if (url.contains("DIDBFastStationList")) return com.valledemena.ionosphere.data.net.HttpResult(504, "")
+                if (url.contains("prop.kc2g.com")) return com.valledemena.ionosphere.data.net.HttpResult(200, kcBody)
+                return com.valledemena.ionosphere.data.net.HttpResult(504, "")
+            }
+        }
+        val adapter = IonosondeAdapter(http, clock = { java.time.Instant.parse("2026-11-07T03:20:00Z").toEpochMilli() }, stations = listOf("AA343"), anchorStations = emptySet())
+        val r = adapter.fetch()
+        assertTrue(r is com.valledemena.ionosphere.data.net.Outcome.Live)
+        val data = (r as com.valledemena.ionosphere.data.net.Outcome.Live<*>).value as com.valledemena.ionosphere.data.model.IonosondeData
+        assertEquals("kc2g fallback", data.source)
+        assertTrue(data.stations.isNotEmpty())
     }
 
-    @Test fun fixtureReferenceExists() {
-        val ref = "docs/fixtures/kc2g/stations.json"
-        assertTrue(ref.endsWith("stations.json"))
+    @Test
+    fun fixtureParsesRealRows() {
+        fun findFixture(): java.io.File? {
+            var d = java.io.File(System.getProperty("user.dir"))
+            for (i in 0..10) {
+                val c = java.io.File(d, "docs/fixtures/kc2g/stations.json")
+                if (c.exists()) return c
+                val parent = d.parentFile ?: break
+                d = parent
+            }
+            return null
+        }
+        val fixture = findFixture() ?: return
+        // Shape check of the harvested fixture (no parser exists for the whole file).
+        val raw = fixture.readText()
+        val count = raw.split("\"code\"").size - 1
+        assertTrue(count >= 80)
     }
 }

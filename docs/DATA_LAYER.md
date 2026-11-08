@@ -32,5 +32,5 @@ Ver `docs/r0/DATA_CONTRACT.md`, `docs/r0/IMPLEMENTATION_SLICES.md` §R2.
 - Fuente declarada en payload: `kc2g fallback` (no hardcodeada en UI, B5).
 - Endpoints: `prop.kc2g.com/api/stations.json` (array, 101 filas); consumo solo si la ronda LGDC queda sin estaciones (failover-only).
 - Ficheros: `data/model/Kc2gData.kt`, `data/model/Kc2gDataTest.kt`, `data/source/ionosondes/IonosondeAdapter.kt`, `data/source/ionosondes/Kc2gFailoverTest.kt`; fixtures en `docs/fixtures/kc2g/`.
-- Semantica S6: excepcion de transporte -> `Failed` (si sin cache); bodies no-ok -> `Live("unavailable")` (rama (B)); cache conservado; void cache run repeatedly does not survive store call.
+- Semantica S6: excepcion de transporte -> `Failed` (si sin cache); bodies no-ok -> `Live("unavailable")` (rama (B)); cache conservado; cache honesto (no envenena).
 - No toca manifest/build ni rendering.
