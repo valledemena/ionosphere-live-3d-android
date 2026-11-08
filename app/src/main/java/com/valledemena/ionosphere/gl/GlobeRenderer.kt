@@ -42,6 +42,11 @@ class GlobeRenderer(
     private var program = 0
     private var textureId = 0
     private var nightTextureId = 0
+
+    // Slice A (R4 ii): plumbing RT; drawn lazily si egl/context lo soportan.
+    private var surfaceWidth = 0
+    private var surfaceHeight = 0
+    private var offscreen: OffscreenSurface? = null
     private var vao = 0
     private var positionBuffer = 0
     private var normalBuffer = 0
@@ -146,6 +151,10 @@ private val clock = RotationClock()
 
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
         GLES20.glViewport(0, 0, width, height)
+        surfaceWidth = width; surfaceHeight = height
+        val o = OffscreenSurface(width, height)
+        o.init()
+        offscreen = o
         val aspect = if (height == 0) 1f else width.toFloat() / height.toFloat()
         Matrix.perspectiveM(projection, 0, 45f, aspect, 0.1f, 100f)
         Matrix.setLookAtM(view, 0, 0f, 0f, 3.2f, 0f, 0f, 0f, 0f, 1f, 0f)
@@ -153,6 +162,8 @@ private val clock = RotationClock()
     }
 
     override fun onDrawFrame(gl: GL10?) {
+        val off = offscreen
+        if (off?.isReady() == true) off.bindOffscreen()
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
 
         val angle = clock.angleAt(SystemClock.uptimeMillis())
@@ -201,6 +212,9 @@ private val clock = RotationClock()
         GLES20.glDisable(GLES20.GL_CULL_FACE)
         GLES20.glDepthMask(true)
         GLES20.glDisable(GLES20.GL_BLEND)
+
+        if (off?.isReady() == true) off.blitToDefault(surfaceWidth, surfaceHeight)
+        GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, 0)
 
         frameCount++
     }
