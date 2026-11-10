@@ -14,6 +14,7 @@ import com.valledemena.ionosphere.core.PlaceholderGlobeTexture
 import com.valledemena.ionosphere.render.AtmoShaderConstants
 import com.valledemena.ionosphere.render.AtmoShaderSource
 import com.valledemena.ionosphere.render.EarthShaderConstants
+import com.valledemena.ionosphere.render.GodRaysPass
 import com.valledemena.ionosphere.core.Rotation
 import com.valledemena.ionosphere.core.RotationClock
 import com.valledemena.ionosphere.core.SphereMesh
@@ -35,18 +36,39 @@ class GlobeRenderer(
     private val context: Context,
     atmoStepsOverride: Int? = null,
     atmoLightStepsOverride: Int? = null,
+    measure: MeasureConfig? = null,
 ) : GLSurfaceView.Renderer {
 
     private val mesh = SphereMesh.unitSphere()
+
+    // Configuracion de medicion opcional (measure.json externo): fija
+    // camara/sol/fov del pin y permite el par ON/OFF. Sin fichero se usan los
+    // defaults de produccion.
+    private val cameraEye: FloatArray =
+        measure?.cameraEye ?: floatArrayOf(0f, 0f, 3.2f)
+    private val sunDir: FloatArray =
+        measure?.sunDir ?: floatArrayOf(SUN_DIR_X, SUN_DIR_Y, SUN_DIR_Z)
+    private val fieldOfView: Float = measure?.fov ?: 45f
+    private val drawAtmosphere: Boolean = measure?.drawAtmosphere ?: true
+    private val frozenModel: Boolean = measure?.frozenModel ?: false
+    private val bloomEnabled: Boolean = measure?.bloom ?: true
+    private val captureName: String? = measure?.captureName
+    private var captured = false
 
     private var program = 0
     private var textureId = 0
     private var nightTextureId = 0
 
-    // Slice A (R4 ii): plumbing RT; drawn lazily si egl/context lo soportan.
+    // Slice A (R4 ii): plumbing RT; Slice C: cadena bloom -> ACES -> god-rays.
     private var surfaceWidth = 0
     private var surfaceHeight = 0
     private var offscreen: OffscreenSurface? = null
+    private var postChain: PostProcessChain? = null
+
+    private val sunScreen = FloatArray(2)
+    private val sunClip = FloatArray(4)
+    private val sunPoint = FloatArray(4)
+
     private var vao = 0
     private var positionBuffer = 0
     private var normalBuffer = 0
@@ -137,8 +159,10 @@ private val clock = RotationClock()
         GLES20.glUniform1f(uAtmoSteps, atmoSteps.toFloat())
         GLES20.glUniform1f(uAtmoLightSteps, atmoLightSteps.toFloat())
         GLES20.glUseProgram(0)
-        textureId = uploadTexture(PlaceholderGlobeTexture.TIER_MEDIUM_WIDTH, PlaceholderGlobeTexture.TIER_MEDIUM_HEIGHT)
-        nightTextureId = uploadTextureFromBitmap(R.drawable.earth_night)
+        textureId = uploadTextureFromAsset("earth-day.jpg", srgb = true)
+            ?: uploadTexture(PlaceholderGlobeTexture.TIER_MEDIUM_WIDTH, PlaceholderGlobeTexture.TIER_MEDIUM_HEIGHT)
+        nightTextureId = uploadTextureFromAsset("earth-night.png", srgb = true)
+            ?: uploadTextureFromBitmap(R.drawable.earth_night, srgb = true)
 
         clock.onSurfaceCreated(SystemClock.uptimeMillis())
 
@@ -152,25 +176,52 @@ private val clock = RotationClock()
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
         GLES20.glViewport(0, 0, width, height)
         surfaceWidth = width; surfaceHeight = height
+        // W3: el RT anterior se libera en cada resize (FBO + 2 renderbuffers MSAA).
+        offscreen?.release()
+        offscreen = null
+        postChain?.release()
+        postChain = null
+
+        val extensions = GLES20.glGetString(GLES20.GL_EXTENSIONS) ?: ""
         val o = OffscreenSurface(width, height)
-        o.init()
+        o.init(extensions)
         offscreen = o
+
+        val chain = PostProcessChain(
+            width,
+            height,
+            o.supportsHalfFloatExtension(extensions),
+        )
+        chain.init()
+        postChain = if (chain.isReady()) chain else null
+        if (postChain == null) chain.release()
+
         val aspect = if (height == 0) 1f else width.toFloat() / height.toFloat()
-        Matrix.perspectiveM(projection, 0, 45f, aspect, 0.1f, 100f)
-        Matrix.setLookAtM(view, 0, 0f, 0f, 3.2f, 0f, 0f, 0f, 0f, 1f, 0f)
+        Matrix.perspectiveM(projection, 0, fieldOfView, aspect, 0.1f, 100f)
+        Matrix.setLookAtM(
+            view, 0,
+            cameraEye[0], cameraEye[1], cameraEye[2],
+            0f, 0f, 0f,
+            0f, 1f, 0f,
+        )
         Matrix.multiplyMM(viewProjection, 0, projection, 0, view, 0)
     }
 
     override fun onDrawFrame(gl: GL10?) {
         val off = offscreen
         if (off?.isReady() == true) off.bindOffscreen()
-        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
+        // Fix: glClear on MSAA RGBA16F only clears 1 of 4 samples on SwiftShader.
+        // Use a fullscreen quad to clear all samples.
+        off?.clearColorByQuad()
+        GLES20.glClear(GLES20.GL_DEPTH_BUFFER_BIT)
 
         val angle = clock.angleAt(SystemClock.uptimeMillis())
 
         Matrix.setIdentityM(model, 0)
-        Matrix.rotateM(model, 0, -23.4f, 0f, 0f, 1f)   // inclinación axial declarada
-        Matrix.rotateM(model, 0, angle, 0f, 1f, 0f)
+        if (!frozenModel) {
+            Matrix.rotateM(model, 0, -23.4f, 0f, 0f, 1f)   // inclinación axial declarada
+            Matrix.rotateM(model, 0, angle, 0f, 1f, 0f)
+        }
         Matrix.multiplyMM(mvp, 0, viewProjection, 0, model, 0)
 
         GLES20.glUseProgram(program)
@@ -192,31 +243,113 @@ private val clock = RotationClock()
         GLES20.glDrawElements(GLES20.GL_TRIANGLES, mesh.indices.size, GLES20.GL_UNSIGNED_SHORT, 0)
         GLES30.glBindVertexArray(0)
 
-        // Pase del shell (atmosfera): aditivo, BackSide espejado con cull front,
-        // sin escribir z (mirror de web builders.ts L122-138). Restauracion completa
-        // de estado: culling vuelve a desactivado (estado global del renderer),
-        // depth mask y blend vuelven a sus valores previos al pase.
-        GLES20.glUseProgram(atmoProgram)
-        GLES20.glUniformMatrix4fv(uAtmoMvp, 1, false, mvp, 0)
-        GLES20.glUniformMatrix4fv(uAtmoModel, 1, false, model, 0)
-        pushSunCamera(uAtmoSunDir, uAtmoCameraPos)
+        if (drawAtmosphere) {
+            // Pase del shell (atmosfera): aditivo, BackSide espejado con cull front,
+            // sin escribir z (mirror de web builders.ts L122-138). Restauracion completa
+            // de estado: culling vuelve a desactivado (estado global del renderer),
+            // depth mask y blend vuelven a sus valores previos al pase.
+            // Web NO rota la Tierra (modelMatrix = identity). El ciclo dia/noche viene
+            // del uSunDir que cambia con la estacion. Android debe igualar: uAtmoMvp = viewProjection,
+            // uAtmoModel = identity.
+            GLES20.glUseProgram(atmoProgram)
+            GLES20.glUniformMatrix4fv(uAtmoMvp, 1, false, viewProjection, 0)
+            GLES20.glUniformMatrix4fv(uAtmoModel, 1, false, IDENTITY_MATRIX, 0)
+            pushSunCamera(uAtmoSunDir, uAtmoCameraPos)
 
-        GLES20.glEnable(GLES20.GL_BLEND)
-        GLES20.glBlendFunc(GLES20.GL_ONE, GLES20.GL_ONE)
-        GLES20.glDepthMask(false)
-        GLES20.glEnable(GLES20.GL_CULL_FACE)
-        GLES20.glCullFace(GLES20.GL_FRONT)
-        GLES30.glBindVertexArray(atmoVao)
-        GLES20.glDrawElements(GLES20.GL_TRIANGLES, mesh.indices.size, GLES20.GL_UNSIGNED_SHORT, 0)
-        GLES30.glBindVertexArray(0)
-        GLES20.glDisable(GLES20.GL_CULL_FACE)
+            GLES20.glEnable(GLES20.GL_BLEND)
+            GLES20.glBlendFunc(GLES20.GL_ONE, GLES20.GL_ONE)
+            GLES20.glDepthMask(false)
+            GLES20.glEnable(GLES20.GL_CULL_FACE)
+            // SphereMesh winds its triangles CW when seen from outside, so the
+            // far hemisphere is FRONT-facing under the default CCW rule. The
+            // web draws the shell with THREE.BackSide (far hemisphere): cull
+            // BACK keeps exactly that half. Culling FRONT kept the near half,
+            // where t1 - t0 <= 0 and the ray march discarded every fragment.
+            GLES20.glCullFace(GLES20.GL_BACK)
+            GLES30.glBindVertexArray(atmoVao)
+            GLES20.glDrawElements(GLES20.GL_TRIANGLES, mesh.indices.size, GLES20.GL_UNSIGNED_SHORT, 0)
+            GLES30.glBindVertexArray(0)
+            GLES20.glDisable(GLES20.GL_CULL_FACE)
+            GLES20.glDepthMask(true)
+            GLES20.glDisable(GLES20.GL_BLEND)
+        }
+
+        val chain = postChain
+        if (chain != null && !bloomEnabled) chain.bloomStrength = 0f
+        if (off?.isReady() == true) {
+            off.resolveColor()
+            if (chain != null && chain.isReady() && off.resolvedReady()) {
+                val gate = updateSunGate()
+                chain.render(off.resolvedTexture(), sunScreen[0], sunScreen[1], gate)
+                GLES20.glViewport(0, 0, surfaceWidth, surfaceHeight)
+            } else {
+                GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, 0)
+                off.blitToDefault(surfaceWidth, surfaceHeight)
+            }
+        } else {
+            GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, 0)
+        }
+
+        GLES20.glEnable(GLES20.GL_DEPTH_TEST)
         GLES20.glDepthMask(true)
         GLES20.glDisable(GLES20.GL_BLEND)
 
-        if (off?.isReady() == true) off.blitToDefault(surfaceWidth, surfaceHeight)
-        GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, 0)
-
         frameCount++
+        if (captureName != null && !captured && frameCount >= 10) {
+            captured = true
+            captureFrame(captureName)
+        }
+    }
+
+    /**
+     * Guarda el framebuffer ya presentado a PNG (sin HUD ni barras del
+     * sistema, que viven en capas distintas). Solo corre si `measure.json`
+     * declara `capture`.
+     */
+    private fun captureFrame(name: String) {
+        val w = surfaceWidth
+        val h = surfaceHeight
+        if (w <= 0 || h <= 0) return
+        val pixels = ByteBuffer.allocateDirect(w * h * 4).order(ByteOrder.nativeOrder())
+        GLES20.glReadPixels(0, 0, w, h, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, pixels)
+        pixels.rewind()
+        val raw = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        raw.copyPixelsFromBuffer(pixels)
+        val flipped = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        val canvas = android.graphics.Canvas(flipped)
+        val flip = android.graphics.Matrix().apply {
+            postScale(1f, -1f)
+            postTranslate(0f, h.toFloat())
+        }
+        canvas.drawBitmap(raw, flip, null)
+        val dir = context.getExternalFilesDir(null)
+        val file = java.io.File(dir, name)
+        java.io.FileOutputStream(file).use {
+            flipped.compress(Bitmap.CompressFormat.PNG, 100, it)
+        }
+        Log.i(TAG, "captura de medicion: ${file.absolutePath} ${w}x${h}")
+    }
+
+    /**
+     * C7: gate CPU de proyeccion solar. El pase de god-rays solo corre cuando
+     * el punto subsolar mira a la camara y cae dentro del encuadre; si no
+     * aporta, se hace skip y la imagen post-ACES se presenta directa.
+     */
+    private fun updateSunGate(): Boolean {
+        val len = kotlin.math.sqrt(sunDir[0] * sunDir[0] + sunDir[1] * sunDir[1] + sunDir[2] * sunDir[2])
+        sunPoint[0] = sunDir[0] / len
+        sunPoint[1] = sunDir[1] / len
+        sunPoint[2] = sunDir[2] / len
+        sunPoint[3] = 1f
+        val facingCamera = sunPoint[2] > 0f
+        Matrix.multiplyMV(sunClip, 0, viewProjection, 0, sunPoint, 0)
+        val w = sunClip[3]
+        if (w == 0f) return false
+        val ndcX = sunClip[0] / w
+        val ndcY = sunClip[1] / w
+        sunScreen[0] = ndcX * 0.5f + 0.5f
+        sunScreen[1] = ndcY * 0.5f + 0.5f
+        return facingCamera && GodRaysPass.sunContributes(w, ndcX, ndcY)
     }
 
     private fun uploadMesh() {
@@ -257,8 +390,8 @@ private val clock = RotationClock()
 
     /** Sol y camara: mismos valores para los dos programas (Earth y shell), una sola fuente. */
     private fun pushSunCamera(uSunDir: Int, uCameraPos: Int) {
-        GLES20.glUniform3f(uSunDir, 0.6f, 0.35f, 0.72f)
-        GLES20.glUniform3f(uCameraPos, 0.0f, 0.0f, 3.2f)
+        GLES20.glUniform3f(uSunDir, sunDir[0], sunDir[1], sunDir[2])
+        GLES20.glUniform3f(uCameraPos, cameraEye[0], cameraEye[1], cameraEye[2])
     }
 
     private fun uploadFloatAttribute(location: Int, data: FloatArray, components: Int): Int {
@@ -313,13 +446,51 @@ private val clock = RotationClock()
         return id
     }
 
-    private fun uploadTextureFromBitmap(resId: Int): Int {
+    private fun uploadTextureFromBitmap(resId: Int, srgb: Boolean = false): Int {
         val opts = BitmapFactory.Options().apply {
             inPreferredConfig = Bitmap.Config.ARGB_8888
             inScaled = false
         }
         val bmp = BitmapFactory.decodeResource(context.applicationContext.resources, resId, opts)
-        val pixels = IntArray(bmp!!.width * bmp!!.height)
+        return uploadBitmap(bmp, srgb)
+    }
+
+    /** D5: NASA original assets, byte-exact, decoded straight from app assets.
+     *
+     * Se leen a memoria y se decodifican con `decodeByteArray`: el APK guarda
+     * estos assets sin comprimir y `decodeStream` puede devolver `null`
+     * ("incomplete input") aunque el fichero este intacto, cayendo entonces al
+     * placeholder sin que se note.
+     *
+     * `earth-night.png` de NASA trae un chunk `zTXt` de 23.7 MB (85% del
+     * fichero) que el decodificador PNG de Android rechaza. El asset del APK
+     * queda byte-exacto; solo se descartan los chunks auxiliares de texto en
+     * memoria antes de decodificar.
+     */
+    private fun uploadTextureFromAsset(name: String, srgb: Boolean = false): Int? {
+        return try {
+            val raw = context.assets.open(name).use { it.readBytes() }
+            val bytes = PngAssetSanitizer.withoutTextChunks(raw)
+            val opts = BitmapFactory.Options().apply {
+                inPreferredConfig = Bitmap.Config.ARGB_8888
+                inScaled = false
+            }
+            val bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts)
+            if (bmp == null) {
+                Log.w(TAG, "asset $name no decodifica (${bytes.size}/${raw.size} B)")
+                return null
+            }
+            Log.i(TAG, "asset $name ${raw.size} B -> ${bmp.width}x${bmp.height}")
+            uploadBitmap(bmp, srgb)
+        } catch (e: Throwable) {
+            Log.w(TAG, "asset $name no disponible: $e")
+            null
+        }
+    }
+
+    private fun uploadBitmap(bmp: Bitmap?, srgb: Boolean = false): Int {
+        if (bmp == null) return 0
+        val pixels = IntArray(bmp.width * bmp.height)
         bmp.getPixels(pixels, 0, bmp.width, 0, 0, bmp.width, bmp.height)
         val buffer = ByteBuffer.allocateDirect(pixels.size * 4).order(ByteOrder.nativeOrder())
         for (px in pixels) {
@@ -334,7 +505,8 @@ private val clock = RotationClock()
         val tid = textures[0]
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, tid)
         GLES20.glTexImage2D(
-            GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA, bmp.width, bmp.height,
+            GLES20.GL_TEXTURE_2D, 0,
+            if (srgb) GLES30.GL_SRGB8_ALPHA8 else GLES20.GL_RGBA, bmp.width, bmp.height,
             0, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, buffer
         )
         GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR)
@@ -342,6 +514,8 @@ private val clock = RotationClock()
         GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_REPEAT)
         GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE)
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0)
+        textureWidth = bmp.width
+        textureHeight = bmp.height
         bmp.recycle()
         return tid
     }
@@ -362,6 +536,10 @@ private val clock = RotationClock()
 
     companion object {
         private const val TAG = "GlobeRenderer"
+        private const val SUN_DIR_X = 0.6f
+        private const val SUN_DIR_Y = 0.35f
+        private const val SUN_DIR_Z = 0.72f
+        private val IDENTITY_MATRIX = FloatArray(16).apply { Matrix.setIdentityM(this, 0) }
 
         private const val VERTEX_BODY = """
 uniform mat4 uMvp;

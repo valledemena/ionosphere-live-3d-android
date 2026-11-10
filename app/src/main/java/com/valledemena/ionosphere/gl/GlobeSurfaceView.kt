@@ -32,6 +32,7 @@ class GlobeSurfaceView @JvmOverloads constructor(
         context,
         atmoStepsOverride = atmoSteps,
         atmoLightStepsOverride = atmoLightSteps,
+        measure = MeasureConfig.from(context),
     )
     private val choreographer = Choreographer.getInstance()
     private var running = false
