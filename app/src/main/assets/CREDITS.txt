@@ -1,2 +1,16 @@
-NASA Blue Marble texture license: MIT/MIT-0 placeholder CC-BY reference
-Credits: Earth day/night imagery courtesy NASA Blue Marble.
+NASA Earth imagery - display parity assets (R4 ii, decision D5/D7)
+====================================================================
+
+earth-day.jpg
+  Source: NASA Blue Marble (day imagery), public domain.
+  Size: 1884678 bytes
+  SHA-256: 99f5faad74efe985fbf1714c8be7296ca9999759a1215b65f99b7f1df278dde5
+
+earth-night.png
+  Source: NASA Black Marble (night lights), public domain.
+  Size: 27964110 bytes
+  SHA-256: bfc05c5de429e52de8f6ab92fe0022df2041f648a6983cb4fede68ccf05ce795
+
+License: NASA media are in the public domain. Attribution is provided for
+provenance only. These files are the original NASA assets, byte-exact, with
+no recompression or resampling.
