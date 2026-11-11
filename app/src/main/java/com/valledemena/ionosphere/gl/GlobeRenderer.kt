@@ -15,6 +15,7 @@ import com.valledemena.ionosphere.render.AtmoShaderConstants
 import com.valledemena.ionosphere.render.AtmoShaderSource
 import com.valledemena.ionosphere.render.EarthShaderConstants
 import com.valledemena.ionosphere.render.GodRaysPass
+import com.valledemena.ionosphere.core.OrbitCamera
 import com.valledemena.ionosphere.core.Rotation
 import com.valledemena.ionosphere.core.RotationClock
 import com.valledemena.ionosphere.core.SphereMesh
@@ -44,16 +45,27 @@ class GlobeRenderer(
     // Configuracion de medicion opcional (measure.json externo): fija
     // camara/sol/fov del pin y permite el par ON/OFF. Sin fichero se usan los
     // defaults de produccion.
-    private val cameraEye: FloatArray =
-        measure?.cameraEye ?: floatArrayOf(0f, 0f, 3.2f)
+    private val interactiveCamera = measure == null
+    private val camera = OrbitCamera()
+    private val cameraEye = FloatArray(3)
     private val sunDir: FloatArray =
         measure?.sunDir ?: floatArrayOf(SUN_DIR_X, SUN_DIR_Y, SUN_DIR_Z)
-    private val fieldOfView: Float = measure?.fov ?: 45f
+    private val fieldOfView: Float = measure?.fov ?: 42f
     private val drawAtmosphere: Boolean = measure?.drawAtmosphere ?: true
     private val frozenModel: Boolean = measure?.frozenModel ?: false
     private val bloomEnabled: Boolean = measure?.bloom ?: true
     private val captureName: String? = measure?.captureName
     private var captured = false
+
+    init {
+        if (measure != null) {
+            cameraEye[0] = measure.cameraEye[0]
+            cameraEye[1] = measure.cameraEye[1]
+            cameraEye[2] = measure.cameraEye[2]
+        } else {
+            camera.writeEye(cameraEye)
+        }
+    }
 
     private var program = 0
     private var textureId = 0
@@ -112,6 +124,7 @@ class GlobeRenderer(
 private val clock = RotationClock()
 
     private var frameCount = 0
+    private var lastCameraFrameMs = 0L
     private var textureWidth = 0
     private var textureHeight = 0
 
@@ -165,6 +178,7 @@ private val clock = RotationClock()
             ?: uploadTextureFromBitmap(R.drawable.earth_night, srgb = true)
 
         clock.onSurfaceCreated(SystemClock.uptimeMillis())
+        lastCameraFrameMs = 0L
 
         Log.i(
             TAG,
@@ -197,7 +211,11 @@ private val clock = RotationClock()
         if (postChain == null) chain.release()
 
         val aspect = if (height == 0) 1f else width.toFloat() / height.toFloat()
-        Matrix.perspectiveM(projection, 0, fieldOfView, aspect, 0.1f, 100f)
+        if (interactiveCamera) {
+            Matrix.perspectiveM(projection, 0, 42f, aspect, 0.1f, 100f)
+        } else {
+            Matrix.perspectiveM(projection, 0, fieldOfView, aspect, 0.1f, 100f)
+        }
         Matrix.setLookAtM(
             view, 0,
             cameraEye[0], cameraEye[1], cameraEye[2],
@@ -214,6 +232,22 @@ private val clock = RotationClock()
         // Use a fullscreen quad to clear all samples.
         off?.clearColorByQuad()
         GLES20.glClear(GLES20.GL_DEPTH_BUFFER_BIT)
+
+        if (interactiveCamera) {
+            val now = SystemClock.uptimeMillis()
+            if (lastCameraFrameMs != 0L) {
+                camera.update(((now - lastCameraFrameMs) / 1000f).coerceIn(0f, 0.1f))
+            }
+            lastCameraFrameMs = now
+            camera.writeEye(cameraEye)
+            Matrix.setLookAtM(
+                view, 0,
+                cameraEye[0], cameraEye[1], cameraEye[2],
+                0f, 0f, 0f,
+                0f, 1f, 0f,
+            )
+            Matrix.multiplyMM(viewProjection, 0, projection, 0, view, 0)
+        }
 
         val angle = clock.angleAt(SystemClock.uptimeMillis())
 
@@ -533,6 +567,26 @@ private val clock = RotationClock()
             .asShortBuffer()
             .put(this)
             .also { it.position(0) }
+
+    val cameraInteractive: Boolean get() = interactiveCamera
+
+    fun onCameraDrag(dxPx: Float, dyPx: Float, viewportHeight: Int) {
+        if (interactiveCamera) camera.dragFromPixels(dxPx, dyPx, viewportHeight)
+    }
+
+    fun onCameraFling(xVelocityPxPerSecond: Float, yVelocityPxPerSecond: Float, viewportHeight: Int) {
+        if (interactiveCamera) {
+            camera.flingFromPixels(xVelocityPxPerSecond, yVelocityPxPerSecond, viewportHeight)
+        }
+    }
+
+    fun onCameraScale(scaleFactor: Float) {
+        if (interactiveCamera) camera.scaleBy(scaleFactor)
+    }
+
+    fun onCameraStopInertia() {
+        if (interactiveCamera) camera.stopInertia()
+    }
 
     companion object {
         private const val TAG = "GlobeRenderer"

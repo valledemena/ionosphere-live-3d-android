@@ -5,6 +5,9 @@ import android.opengl.GLSurfaceView
 import android.util.AttributeSet
 import android.util.Log
 import android.view.Choreographer
+import android.view.MotionEvent
+import android.view.ScaleGestureDetector
+import android.view.VelocityTracker
 import com.valledemena.ionosphere.core.FramePacer
 import javax.microedition.khronos.egl.EGL10
 import javax.microedition.khronos.egl.EGLConfig
@@ -38,6 +41,25 @@ class GlobeSurfaceView @JvmOverloads constructor(
     private var running = false
 
     private val pacer = FramePacer()
+
+    private val scaleDetector = ScaleGestureDetector(
+        context,
+        object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+            override fun onScale(detector: ScaleGestureDetector): Boolean {
+                renderer.onCameraScale(detector.scaleFactor)
+                return true
+            }
+
+            override fun onScaleBegin(detector: ScaleGestureDetector): Boolean {
+                renderer.onCameraStopInertia()
+                return true
+            }
+        },
+    )
+    private var lastTouchX = 0f
+    private var lastTouchY = 0f
+    private var dragging = false
+    private var velocityTracker: VelocityTracker? = null
 
     private val frameCallback = object : Choreographer.FrameCallback {
         override fun doFrame(frameTimeNanos: Long) {
@@ -73,8 +95,68 @@ class GlobeSurfaceView @JvmOverloads constructor(
 
     fun textureSize(): IntArray = renderer.loadedTextureSize
 
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        if (!renderer.cameraInteractive) return super.onTouchEvent(event)
+
+        scaleDetector.onTouchEvent(event)
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                lastTouchX = event.x
+                lastTouchY = event.y
+                dragging = true
+                renderer.onCameraStopInertia()
+                velocityTracker?.recycle()
+                velocityTracker = VelocityTracker.obtain().apply { addMovement(event) }
+            }
+            MotionEvent.ACTION_POINTER_DOWN -> {
+                dragging = false
+                velocityTracker?.clear()
+            }
+            MotionEvent.ACTION_MOVE -> {
+                if (dragging && !scaleDetector.isInProgress && event.pointerCount == 1) {
+                    val dx = event.x - lastTouchX
+                    val dy = event.y - lastTouchY
+                    if (dx != 0f || dy != 0f) {
+                        renderer.onCameraDrag(dx, dy, height)
+                        lastTouchX = event.x
+                        lastTouchY = event.y
+                    }
+                    velocityTracker?.addMovement(event)
+                }
+            }
+            MotionEvent.ACTION_POINTER_UP -> {
+                dragging = false
+            }
+            MotionEvent.ACTION_UP -> {
+                if (dragging && !scaleDetector.isInProgress) {
+                    velocityTracker?.let { tracker ->
+                        tracker.computeCurrentVelocity(1000)
+                        renderer.onCameraFling(tracker.xVelocity, tracker.yVelocity, height)
+                    }
+                }
+                dragging = false
+                velocityTracker?.recycle()
+                velocityTracker = null
+                performClick()
+            }
+            MotionEvent.ACTION_CANCEL -> {
+                dragging = false
+                velocityTracker?.recycle()
+                velocityTracker = null
+            }
+        }
+        return true
+    }
+
+    override fun performClick(): Boolean {
+        super.performClick()
+        return true
+    }
+
     override fun onDetachedFromWindow() {
         stop()
+        velocityTracker?.recycle()
+        velocityTracker = null
         super.onDetachedFromWindow()
     }
 
