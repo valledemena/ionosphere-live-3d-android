@@ -22,7 +22,7 @@ class AtmoShaderSourceTest {
     }
 
     @Test fun frag_es3_header() {
-        assertTrue(frag.contains("precision mediump float;"))
+        assertTrue(frag.contains("precision highp float;"))
         assertTrue(frag.contains("in vec3 vFragPos;"))
         assertTrue(frag.contains("out vec4 fragColor;"))
         assertFalse(frag.contains("varying"))
