@@ -21,7 +21,7 @@ void main() {
 """
 
     val ATMO_FRAG: String = """
-precision mediump float;
+precision highp float;
 uniform vec3 uSunDir;
 uniform vec3 uCameraPos;
 uniform float uIntensity;
