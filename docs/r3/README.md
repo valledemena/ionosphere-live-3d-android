@@ -6,7 +6,13 @@ Estado del tablero (closed dates 2026-11-07):
 - R3.1 Android colormaps espejo: commit 72612b9 (#16 merged).
 - R3.2 cerrado 2026-11-07: luces nocturnas + shell atmosferico (golden r32b2/b3; #23 e9e244c + #24 f57ce7c -> d246127).
 - R3.3 cerrado 2026-11-07: HUD produccion Kp/Dst/foF2 + primeros consumidores release (fila #25/#26 -> 81fc214; gate de dispositivo FIRME; sesion movil N/A declarada sin SIM).
-- R3.4 pendiente: capa ionosondas + pointSize clamp 2-30 tests.
+- R3.4 pendiente: capa ionosondas + pointSize clamp 2-30 tests. **Plan docs-only
+  depositado 2026-11-13**: `docs/r3/PLAN-R3.4-IONOSONDE-LAYER.md` (T1-T7
+  cerrados; pendiente de dictamen GLM y GO de David).
+
+Nomenclatura: el track de **paridad visual** cerrado el 2026-11-13 usa los
+nombres "R4"/"R5" ("paridad-R5"). No son las fases R4 (Tiempo y profundidad) ni
+R5 (Cielo vivo) de `docs/r0/IMPLEMENTATION_SLICES.md`, que siguen sin empezar.
 
 Cross-reference: #15 tracker
 Decision Texture: A (downscale 2048x1024), ver nota GLM R2/R3.0.

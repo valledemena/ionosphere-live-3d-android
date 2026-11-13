@@ -2,7 +2,11 @@
 
 **Base del programa:** `00ec7cb` · **main de arranque E post-P:** `75366b2`
 **Pin web:** `8cdc334` · **Instrumento:** v5 `ba433297…`
-**Medidor W11/R5:** `b3794c49…`
+**Medidor W11/paridad-R5:** `b3794c49…`
+
+Nota de nomenclatura: "R4"/"R5" en este documento son el **track de paridad
+visual** ya cerrado (de ahí "paridad-R5"), no las fases R4 (Tiempo y
+profundidad) ni R5 (Cielo vivo) de `docs/r0/IMPLEMENTATION_SLICES.md`.
 
 Este documento recoge las decisiones ratificadas D1–D6 y los guardarraíles del
 Slice E. No sustituye al plan ni al dictamen del instrumento.
@@ -14,7 +18,7 @@ Slice E. No sustituye al plan ni al dictamen del instrumento.
 | **D1** | Paridad visual (ii), no naive | Ratificada; el gate se mide con el instrumento. |
 | **D2** | `TARGET_FPS=30` (`FramePacer`) | Ratificada; E1 exige 6 ventanas >= 29 con preset 16/6. |
 | **D3** | Damping `0.06` exacto, pan deshabilitado | Ratificada; K1–K6 verdes en main tras D. |
-| **D4** | Export de video diferido | R5 backlog; no entra en E. |
+| **D4** | Export de video diferido | paridad-R5 backlog; no entra en E. **Decisión de David 2026-11-13: slice dedicado** (no R6), con anexo propio de gates de encode (FPS durante codificación, ventana térmica) antes de escribir código. La definición del slice va en su propio PR docs-only. |
 | **D5** | Textura NASA `2048×1024` (pin `8cdc334`) | Ratificada; el golden de assets queda intocable. |
 | **D6** | Cámara display-matching: fov 42, 3.3 R_E, min 1.12, max 30 | Ratificada y fusionada en D; E no toca `app/src/main`. |
 
@@ -25,8 +29,8 @@ Slice E. No sustituye al plan ni al dictamen del instrumento.
 | **E0** | Cero rutas `app/src/main` en el slice | E mide lo construido; un cambio de producción invalida la comparación. |
 | **E1** | 6 ventanas `avg_fps >= 29`, preset 16/6, `--latency` | Criterio del plan y del expediente R2/R3. |
 | **E2** | THIN 258–278 es la única serie gateada; DEEP es reporte | Definición pre-registrada; `passes_deep` no es el gate. |
-| **E3** | ≥2 documentos en `docs/r4/`; este slice aporta tres | Informe, decisiones y medidor R5 byte-exacto. |
-| **Medidor** | `w11-metric.py` auditado, sha256 `b3794c49…` | Cualquier byte distinto exige re-auditoría R5. |
+| **E3** | ≥2 documentos en `docs/r4/`; este slice aporta tres | Informe, decisiones y medidor paridad-R5 byte-exacto. |
+| **Medidor** | `w11-metric.py` auditado, sha256 `b3794c49…` | Cualquier byte distinto exige re-auditoría paridad-R5. |
 | **O1** | Ignorar `passes_deep`; usar THIN del instrumento | Evita doble criterio y falsos verdes. |
 | **O2** | La captura declara `{w:610,h:620,dpr:1}` | La geometría del framebuffer es el contrato; la densidad no se usa. |
 | **P** | `mediump → highp` en el pase de atmósfera | Fusionado en `75366b2`; elimina la cola fp16 que hacía fallar E2. |
