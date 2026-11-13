@@ -78,7 +78,9 @@ fun stationFoValues(
     val span = if (rawSpan.isFinite() && rawSpan != 0f) rawSpan else 1f
     return FloatArray(stations.size) { i ->
         val f = stations[i].foF2
-        if (f == null || !f.isFinite() || f <= 0.0) {
+        // Espejo del web: `f && f > 0`. NaN cae por la comparacion; +Inf
+        // entra y el clamp lo lleva a 1 (el web hace lo mismo).
+        if (f == null || !(f > 0.0)) {
             0f
         } else {
             ((f.toFloat() - fMin) / span).coerceIn(0f, 1f)

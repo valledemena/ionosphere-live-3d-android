@@ -50,6 +50,8 @@ class StationPointsGeometryTest {
             station("D", 0.0, 0.0, foF2 = -1.0),
             station("E", 0.0, 0.0, foF2 = 4.0),
             station("F", 0.0, 0.0, foF2 = 7.0),
+            station("G", 0.0, 0.0, foF2 = Double.POSITIVE_INFINITY),
+            station("H", 0.0, 0.0, foF2 = Double.NEGATIVE_INFINITY),
         )
         val values = stationFoValues(stations, 5f, 6.5f)
         assertEquals(0f, values[0], 0f)
@@ -58,6 +60,8 @@ class StationPointsGeometryTest {
         assertEquals(0f, values[3], 0f)
         assertEquals(0f, values[4], 0f)
         assertEquals(1f, values[5], 0f)
+        assertEquals(1f, values[6], 0f)
+        assertEquals(0f, values[7], 0f)
     }
 
     @Test
