@@ -118,7 +118,7 @@ NaN cae por los tres `if` (todas las comparaciones con NaN son `false`) y
 | Control de UI (slider) | `hud/LayersPanel.tsx:228-238` | `min=3`, `max=15`, `step=1` |
 | Persistencia | `settingsStorage.ts:90` `readNumber(r, "pointSize", 3, 15, d.pointSize)` | acepta 3..15; no finito -> default |
 | Default | `types.ts` `DEFAULT_SETTINGS.pointSize` | **11** (`STATION_POINT_REF`) |
-| Uniform enviado al shader | `IonosphereScene.tsx:1393-1394` `stationPointSizeClamp(settings.pointSize)` | **[2,30]** |
+| Uniform enviado al shader | `IonosphereScene.tsx:1389-1390` `stationPointSizeClamp(settings.pointSize)` | **[2,30]** |
 
 El clamp [2,30] **nunca lo ejerce el slider** (3..15 lo deja pasar entero). Solo
 muerde valores programaticos o persistidos anomalos. Las dos capas existen en el
@@ -184,7 +184,8 @@ un atajo dentro de R3.4.
 
 ### 3.6 Picking (fuente literal)
 
-`IonosphereScene.tsx:719-748`:
+`IonosphereScene.tsx:710-748` (handler `onUp`; la guarda de arrastre esta en
+**L715**):
 
 - descarta si el arrastre supera **6 px** desde `pointerdown`;
 - proyecta cada estacion; candidato si `dd < 60 px`;
@@ -363,10 +364,10 @@ mutante**. Tabla cerrada (mutante -> test que lo mata):
 | Mutante | Cambio | Test que lo mata |
 |---|---|---|
 | MUT-1 | borrar `if (!(v > 0)) return 2` | solo `NaN -> 2` (los demas siguen cayendo en `v < 2`) |
-| MUT-2 | `v < 2` -> `v < 3` | `1 -> 2` y `2 -> 2` |
+| MUT-2 | `v < 2` -> `v < 3` | solo `2.5 -> 2.5` (decimal en [2,3)); `1 -> 2` y `2 -> 2` devuelven 2 en ambos |
 | MUT-3 | `30` -> `31` en la guarda alta | `31 -> 30` y `99 -> 30` |
 | MUT-4 | borrar la guarda alta entera | `31 -> 30`, `99 -> 30`, `+Inf -> 30` |
-| MUT-5 | `span = max(1.5, ...)` -> `span = fMax - fMin` | fixture de span degenerado (seccion 7.4) |
+| MUT-5 | `span = max(1.5, ...)` -> `span = fMax - fMin` | fixture degenerado asertando el **rango devuelto** por `stationColorRange` (seccion 7.4) |
 | MUT-6 | `aFo` sin clamp 0..1 | fixture con `foF2` fuera de [fMin,fMax] |
 | MUT-7 | `bestD = 24` -> `48` | pick a 30 px -> `null` |
 | MUT-8 | quitar la guarda de arrastre `> 6 px` | tap-arrastre -> `null` |
@@ -389,7 +390,12 @@ tolerancia `1e-4` relativa. Rompe si alguien cambia una constante en un solo lad
 ### 7.4 Fixtures
 
 - `span` degenerado: estaciones con `foF2` todas iguales (p.ej. 5.0) -> `span =
-  1.5` (no `0`), sin division por cero.
+  1.5` (no `0`), sin division por cero. **La asercion va sobre el rango
+  devuelto** (`stationColorRange` devuelve `(fMin, fMin + 1.5)`), no sobre
+  `aFo`: con el espejo del guarda `|| 1` del web (`builders.ts:305`), `0/(0||1)`
+  da `0`, igual que el original `0/1.5`, asi que el mutante sobrevive si solo se
+  mira el color. Alternativa equivalente: muestra `{5.0, 5.5}`, donde el
+  original da `aFo(5.5) = 0.5/1.5 = 0.333` y el mutante `1.0`.
 - Sin dato: `foF2 = null` -> `aFo = 0.0` exacto (replica del web, seccion 3.5).
 - `foF2 = -1` (invalido) -> `aFo = 0.0` (el web usa `f > 0`, no `f != 0`).
 - Picking: 3 estaciones sinteticas con la camara por defecto; una en el centro
@@ -397,6 +403,17 @@ tolerancia `1e-4` relativa. Rompe si alguien cambia una constante en un solo lad
 
 Todos los fixtures son **literales en el test** (Kotlin puro, sin red, sin JSON
 externo): no hay script de extraccion que mantener para esta pieza.
+
+### 7.5 Erratas de la rev. c (dictamen GLM, 2026-11-13)
+
+Tres correcciones pedidas en el dictamen; **ninguna toca la arquitectura ni los
+numeros cerrados de la seccion 7.1**:
+
+1. **MUT-2**: el par de killers declarado era falso; ver la fila corregida.
+2. **MUT-5**: el fixture degenerado solo mata el mutante si se aserta el rango
+   devuelto; ver 7.4.
+3. **Referencias de linea**: uniform en `IonosphereScene.tsx:1389-1390` (no
+   1393-1394) y picking en `710-748` con la guarda de arrastre en L715.
 
 ---
 
@@ -649,7 +666,9 @@ No se mezclan. El PR de codigo **no** empieza hasta que el plan este dictaminado
 3. **Aprobar la divergencia de color** declarada en seccion 5.A (formula igual, muestra
    distinta, sin reclamar paridad).
 4. **Autorizar el push** de la rama `docs/r3.4-plan` y la apertura del PR #1.
-5. **Reubicar D4** (export de video): R6 o slice dedicado. No bloquea R3.4.
+5. **Reubicar D4** (export de video): **resuelto 2026-11-13 -> slice dedicado**,
+   no R6 (recomendacion de GLM asumida por David). Su definicion y sus gates de
+   encode van en un PR docs-only propio; no bloquea R3.4.
 
 ---
 

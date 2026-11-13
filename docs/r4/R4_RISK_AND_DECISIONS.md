@@ -18,7 +18,7 @@ Slice E. No sustituye al plan ni al dictamen del instrumento.
 | **D1** | Paridad visual (ii), no naive | Ratificada; el gate se mide con el instrumento. |
 | **D2** | `TARGET_FPS=30` (`FramePacer`) | Ratificada; E1 exige 6 ventanas >= 29 con preset 16/6. |
 | **D3** | Damping `0.06` exacto, pan deshabilitado | Ratificada; K1–K6 verdes en main tras D. |
-| **D4** | Export de video diferido | paridad-R5 backlog; no entra en E. Sin dueño tras cerrar el track: candidato a R6 o slice dedicado (decisión de David). |
+| **D4** | Export de video diferido | paridad-R5 backlog; no entra en E. **Decisión de David 2026-11-13: slice dedicado** (no R6), con anexo propio de gates de encode (FPS durante codificación, ventana térmica) antes de escribir código. La definición del slice va en su propio PR docs-only. |
 | **D5** | Textura NASA `2048×1024` (pin `8cdc334`) | Ratificada; el golden de assets queda intocable. |
 | **D6** | Cámara display-matching: fov 42, 3.3 R_E, min 1.12, max 30 | Ratificada y fusionada en D; E no toca `app/src/main`. |
 
