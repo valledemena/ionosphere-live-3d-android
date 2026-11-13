@@ -110,7 +110,7 @@ Ficheros del slice:
 
 1. `docs/r4/GATE-E-VALIDATION.md` — este informe.
 2. `docs/r4/R4_RISK_AND_DECISIONS.md` — decisiones y riesgos.
-3. `docs/r4/tools/w11-metric.py` — medidor R5 byte-exacto.
+3. `docs/r4/tools/w11-metric.py` — medidor paridad-R5 byte-exacto.
 4. `scripts/e1_latency.py` y `scripts/e2_halo.py` — tooling de evidencia.
 
 E3 exige **≥2 ficheros** bajo `docs/r4/` en el árbol del head; el candidato
