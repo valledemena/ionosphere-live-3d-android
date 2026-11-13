@@ -9,6 +9,8 @@ import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.VelocityTracker
 import com.valledemena.ionosphere.core.FramePacer
+import com.valledemena.ionosphere.data.model.IonosondeData
+import kotlin.math.hypot
 import javax.microedition.khronos.egl.EGL10
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.egl.EGLContext
@@ -58,8 +60,14 @@ class GlobeSurfaceView @JvmOverloads constructor(
     )
     private var lastTouchX = 0f
     private var lastTouchY = 0f
+    private var downX = 0f
+    private var downY = 0f
+    private var dragPx = 0f
     private var dragging = false
     private var velocityTracker: VelocityTracker? = null
+
+    /** R3.4: null = tap fuera / sin estacion. Se entrega en el hilo de UI. */
+    var onStationPick: ((String?) -> Unit)? = null
 
     private val frameCallback = object : Choreographer.FrameCallback {
         override fun doFrame(frameTimeNanos: Long) {
@@ -75,6 +83,17 @@ class GlobeSurfaceView @JvmOverloads constructor(
         preserveEGLContextOnPause = true
         setRenderer(renderer)
         renderMode = RENDERMODE_WHEN_DIRTY
+        renderer.onStationPick = { code -> post { onStationPick?.invoke(code) } }
+    }
+
+    /** R3.4: alimenta la capa de puntos; no hay fetch propio. */
+    fun setStations(data: IonosondeData?) {
+        renderer.setStations(data)
+    }
+
+    /** R3.4: valor crudo del slider; el clamp [2,30] vive en el renderer. */
+    fun setPointSize(raw: Float) {
+        renderer.setPointSize(raw)
     }
 
     /** Empieza a pedir frames. Idempotente. */
@@ -103,6 +122,9 @@ class GlobeSurfaceView @JvmOverloads constructor(
             MotionEvent.ACTION_DOWN -> {
                 lastTouchX = event.x
                 lastTouchY = event.y
+                downX = event.x
+                downY = event.y
+                dragPx = 0f
                 dragging = true
                 renderer.onCameraStopInertia()
                 velocityTracker?.recycle()
@@ -110,9 +132,13 @@ class GlobeSurfaceView @JvmOverloads constructor(
             }
             MotionEvent.ACTION_POINTER_DOWN -> {
                 dragging = false
+                dragPx = Float.MAX_VALUE
                 velocityTracker?.clear()
             }
             MotionEvent.ACTION_MOVE -> {
+                if (event.pointerCount == 1) {
+                    dragPx = hypot(event.x - downX, event.y - downY)
+                }
                 if (dragging && !scaleDetector.isInProgress && event.pointerCount == 1) {
                     val dx = event.x - lastTouchX
                     val dy = event.y - lastTouchY
@@ -134,13 +160,18 @@ class GlobeSurfaceView @JvmOverloads constructor(
                         renderer.onCameraFling(tracker.xVelocity, tracker.yVelocity, height)
                     }
                 }
+                if (dragPx <= 6f && !scaleDetector.isInProgress) {
+                    renderer.requestPick(event.x, event.y, width, height)
+                }
                 dragging = false
+                dragPx = 0f
                 velocityTracker?.recycle()
                 velocityTracker = null
                 performClick()
             }
             MotionEvent.ACTION_CANCEL -> {
                 dragging = false
+                dragPx = 0f
                 velocityTracker?.recycle()
                 velocityTracker = null
             }
