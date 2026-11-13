@@ -60,6 +60,7 @@ class GlobeRenderer(
     private val drawAtmosphere: Boolean = measure?.drawAtmosphere ?: true
     private val frozenModel: Boolean = measure?.frozenModel ?: false
     private val bloomEnabled: Boolean = measure?.bloom ?: true
+    private val stationsEnabled: Boolean = measure?.stations ?: true
     private val captureName: String? = measure?.captureName
     private var captured = false
 
@@ -200,7 +201,7 @@ private val clock = RotationClock()
         Log.i(
             TAG,
             "Superficie creada (creación nº ${clock.surfaceCreations}): ${mesh.vertexCount} vértices, ${mesh.triangleCount} triángulos, " +
-                "textura ${textureWidth}x${textureHeight}, atmo ${atmoSteps}/${atmoLightSteps}, GL ${GLES20.glGetString(GLES20.GL_VERSION)}",
+                "textura ${textureWidth}x${textureHeight}, atmo ${atmoSteps}/${atmoLightSteps}, stations=$stationsEnabled, GL ${GLES20.glGetString(GLES20.GL_VERSION)}",
         )
     }
 
@@ -297,15 +298,17 @@ private val clock = RotationClock()
 
         // R3.4: puntos despues del globo (depth test ON, depth write OFF) y
         // antes de la atmosfera, como el material transparente del web.
-        stationPoints?.draw(
-            data = stationsData,
-            pointSize = stationPointSizeClamp(rawPointSize),
-            pixelRatio = pixelRatio(),
-            mvp = mvp,
-            viewModel = viewModel,
-            timeSeconds = SystemClock.uptimeMillis() / 1000f,
-        )
-        processPickRequest()
+        if (stationsEnabled) {
+            stationPoints?.draw(
+                data = stationsData,
+                pointSize = stationPointSizeClamp(rawPointSize),
+                pixelRatio = pixelRatio(),
+                mvp = mvp,
+                viewModel = viewModel,
+                timeSeconds = SystemClock.uptimeMillis() / 1000f,
+            )
+            processPickRequest()
+        }
 
         if (drawAtmosphere) {
             // Pase del shell (atmosfera): aditivo, BackSide espejado con cull front,

@@ -21,6 +21,8 @@ data class MeasureConfig(
     val captureName: String?,
     val frozenModel: Boolean,
     val bloom: Boolean,
+    /** Gate T4: permite medir la misma corrida con la capa de estaciones OFF. */
+    val stations: Boolean = true,
 ) {
     companion object {
         private const val FILE_NAME = "measure.json"
@@ -56,6 +58,9 @@ data class MeasureConfig(
                 if (atmoRaw !is Boolean) return null
                 val bloomRaw = json.opt("bloom")
                 if (bloomRaw !is Boolean) return null
+                val stationsRaw = json.opt("stations")
+                if (stationsRaw != null && stationsRaw !is Boolean) return null
+                val stations = stationsRaw as? Boolean ?: true
 
                 MeasureConfig(
                     cameraEye = camera,
@@ -65,6 +70,7 @@ data class MeasureConfig(
                     captureName = capture,
                     frozenModel = model == "identity",
                     bloom = bloomRaw,
+                    stations = stations,
                 )
             } catch (_: Throwable) {
                 null
