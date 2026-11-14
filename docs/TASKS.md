@@ -20,7 +20,7 @@ documento canónico.
 | R0 | Baseline | **cerrado** |
 | R1 | Esqueleto + CI | **cerrado** |
 | R2 | Nucleo de datos (contrato v1) | **cerrado** (issue #4 closed 2026-11-06, SHA ac31886) |
-| R3 | Escena v1 (lenguaje visual) | en progreso: R3.0-R3.3 cerrados 2026-11-07; **R3.4 en curso** (plan en `main`; implementacion A-E pendiente de gate y revision) |
+| R3 | Escena v1 (lenguaje visual) | **cerrado 2026-11-14**: R3.0-R3.3 cerrados 2026-11-07; R3.4 cerrado (PR #39 merge `e12e100`; gate T4/T6 umbral 29,5; T7) |
 | R4 | Tiempo y profundidad | pendiente |
 | R5 | Cielo vivo | pendiente |
 | R6 | Release | pendiente |
