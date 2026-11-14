@@ -50,6 +50,9 @@ private val SLATE_DIM = Color(0xFF64748B)
  * siguiente. El reloj se actualiza cada segundo aquí porque es solo
  * presentación; el avance de la reproducción vive en `GlobeScreen` con
  * [com.valledemena.ionosphere.core.tick].
+ *
+ * Los cambios de modo y el reset **no** tocan `replayPlaying`: el patch de la
+ * web tampoco lo hace. Solo la restauración de sesión lo resetea.
  */
 @Composable
 fun TimeBar(
@@ -75,12 +78,10 @@ fun TimeBar(
     val live = settings.copy(
         timeMode = TimeMode.LIVE,
         replayMinutes = 0.0,
-        replayPlaying = false,
     )
     val toggle = settings.copy(
         timeMode = if (replay) TimeMode.LIVE else TimeMode.REPLAY,
         replayMinutes = 0.0,
-        replayPlaying = false,
     )
 
     Column(
@@ -126,7 +127,6 @@ fun TimeBar(
                         settings.copy(
                             timeMode = if (snapped > 0.0) TimeMode.REPLAY else TimeMode.LIVE,
                             replayMinutes = snapped,
-                            replayPlaying = settings.replayPlaying && snapped > 0.0,
                         ),
                     )
                 },
