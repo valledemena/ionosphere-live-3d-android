@@ -134,10 +134,14 @@ fun GlobeScreen(
         replaySettings.replayLoop,
     ) {
         if (!isResumed) return@LaunchedEffect
+        var lastTickNanos = System.nanoTime()
         while (true) {
             delay(500L)
+            val nowNanos = System.nanoTime()
+            val dtSec = (nowNanos - lastTickNanos) / 1_000_000_000.0
+            lastTickNanos = nowNanos
             val current = latestReplay
-            val next = current.tick(0.5)
+            val next = current.tick(dtSec)
             if (next != current) latestOnReplayChange(next)
         }
     }
