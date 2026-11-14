@@ -6,6 +6,8 @@
 **Oráculo web**: `8cdc3348ab087d10dd43807af217da4e246d996d`.
 **Alcance canónico**: `docs/r0/IMPLEMENTATION_SLICES.md`, fase R4.
 **Autor**: Buffy (Freebuff), a partir del alcance de GLM.
+**Revisión GLM**: 2026-11-14 — Q3/§4.2 corregidos contra `settingsStorage.ts`;
+la sesión no se persiste y los cambios de modo conservan `replayPlaying`.
 
 ---
 
@@ -130,7 +132,8 @@ Defaults del oráculo que R4 debe respetar:
 - `timeMode = "live"`, `replayMinutes = 0`, `replayPlaying = false`.
 - `replaySpeed = 2`, `replayLoop = true`.
 - Rango de replay: `0..10080` minutos (168 h).
-- TimeBar: paso de 5 minutos; velocidades `[0.5, 1, 2, 4, 8]`.
+- TimeBar: paso de 5 minutos; saltos de UI `[0.5, 1, 2, 4, 8]`. El saneado
+  acepta cualquier valor finito en `[0.5, 8]`, no solo esos saltos.
 - `showSlice = false`, `showVolume = false`, `showIso = false`,
   `volumeMode = "density"`, `volumeOpacity = 1.0`.
 - El clamp de `pointSize` ya se cerró en R3.4; R4 no lo vuelve a portar.
@@ -177,12 +180,18 @@ El estado mínimo es `timeMode`, `replayMinutes`, `replayPlaying`,
 Reglas de saneado, antes de persistir o aplicar:
 
 - `replayMinutes`: finito, `0..10080`; fuera de rango se recorta.
-- `replaySpeed`: solo los valores de la lista del TimeBar; desconocido → `2`.
-- `replayPlaying`: booleano; al volver a LIVE se pone `false`.
+- `replaySpeed`: finito, `[0.5, 8]`; no finito o ausente → `2`. Los saltos de la
+  UI son `[0.5, 1, 2, 4, 8]`, pero un valor intermedio persistido es válido,
+  como en `readNumber` de la web.
+- `replayPlaying`: booleano. Los cambios de modo, el reset y el scrub **no** lo
+  alteran, igual que el patch de `TimeBar.tsx`; solo la restauración de sesión
+  lo pone en `false`.
 - `replayLoop`: booleano.
 - `timeMode`: `live`/`replay`; desconocido → `live`.
-- Persistencia con las mismas claves y rangos que la web, sin inventar nombres
-  nuevos. La UI nunca escribe un estado que el núcleo puro no acepte.
+- Persistencia: **solo** `replaySpeed` y `replayLoop`. `timeMode`,
+  `replayMinutes` y `replayPlaying` son de sesión: la web los elimina al
+  serializar y fuerza `live/0/false` al cargar (`serializeSceneSettings` y
+  `sanitizeSceneSettings`). No se inventan claves nuevas.
 
 ### 4.3 Lectura de historia
 
@@ -270,6 +279,8 @@ documento.
 - El tick usa `dt` real; al llegar al presente aplica loop o se detiene según
   `replayLoop`.
 - Persiste solo las claves de §4.2, con saneado.
+- Toggle, reset y scrub conservan `replayPlaying`, como el patch de la web;
+  solo la restauración de sesión lo resetea.
 - **DoD**: en dispositivo, LIVE y REPLAY conmutan sin saltos; el pulgar no se
   mueve al soltar; el reloj coincide con la época; no hay deriva tras 5 min.
 - **Evidencia**: captura del TimeBar y acta de interacción; sin captura no hay
@@ -465,7 +476,7 @@ ni por una declaración sin evidencia.
 |---|---|---|
 | **Q1** | ¿El volumen y la cortina necesitan NDK-MSIS o basta el perfil de capas? | Diferir a R4.7; decidir con la paridad medida, no antes |
 | **Q2** | ¿Qué tabla exacta de pasos usa `atmoQuality`? | Pre-registrarla en R4.6 antes de medir; 64 es la referencia del oráculo |
-| **Q3** | ¿Se persisten `timeMode`/`replayMinutes` entre sesiones? | Sí, con las claves y el saneado de §4.2, como la web |
+| **Q3** | ¿Qué estado de replay sobrevive entre sesiones? | **Resuelto contra el oráculo**: solo `replaySpeed` y `replayLoop`; `timeMode`/`replayMinutes`/`replayPlaying` vuelven a `live/0/false` |
 | **Q4** | ¿Las iso-bands incluyen etiquetas en R4? | Off por defecto; etiquetas solo si el gate visual las exige, sin ampliar el slice |
 | **Q5** | ¿El informe de batería exige un %/h máximo? | No inventarlo; reportar %/h y usar «sesión completa sin throttling» como criterio R4 |
 
