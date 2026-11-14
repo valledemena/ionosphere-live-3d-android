@@ -13,11 +13,6 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -31,7 +26,6 @@ import com.valledemena.ionosphere.core.TimeMode
 import com.valledemena.ionosphere.core.replaySliderOffset
 import com.valledemena.ionosphere.core.timeBarClockLabel
 import com.valledemena.ionosphere.core.timeBarEffectiveMinutes
-import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
 private val SPEEDS = listOf(0.5, 1.0, 2.0, 4.0, 8.0)
@@ -47,24 +41,16 @@ private val SLATE_DIM = Color(0xFF64748B)
  * TimeBar R4.2: espejo de `hud/TimeBar.tsx`.
  *
  * No posee estado de replay propio: recibe [settings] y emite el estado
- * siguiente. El reloj se actualiza cada segundo aquí porque es solo
- * presentación; el avance de la reproducción vive en `GlobeScreen` con
- * [com.valledemena.ionosphere.core.tick].
+ * siguiente. [nowMs] lo inyecta `GlobeScreen`, que también lo usa para la
+ * época del HUD; así no hay dos relojes.
  */
 @Composable
 fun TimeBar(
     settings: ReplaySettings,
     onChange: (ReplaySettings) -> Unit,
+    nowMs: Long,
     modifier: Modifier = Modifier,
 ) {
-    var nowMs by remember { mutableStateOf(System.currentTimeMillis()) }
-    LaunchedEffect(Unit) {
-        while (true) {
-            nowMs = System.currentTimeMillis()
-            delay(1_000L)
-        }
-    }
-
     val replay = settings.timeMode == TimeMode.REPLAY
     val minutes = settings.replayMinutes.coerceIn(0.0, REPLAY_MAX_MINUTES)
     val sliderPosition = replaySliderOffset(REPLAY_MAX_MINUTES, minutes).toFloat()

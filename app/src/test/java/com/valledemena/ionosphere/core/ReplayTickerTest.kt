@@ -72,6 +72,18 @@ class ReplayTickerTest {
     }
 
     @Test
+    fun `la epoca live es ahora`() {
+        val settings = ReplaySettings(timeMode = TimeMode.LIVE, replayMinutes = 120.0)
+        assertEquals(1_000_000L, replayEpochMs(1_000_000L, settings))
+    }
+
+    @Test
+    fun `la epoca replay resta los minutos`() {
+        val settings = ReplaySettings(timeMode = TimeMode.REPLAY, replayMinutes = 120.0)
+        assertEquals(1_000_000L - 7_200_000L, replayEpochMs(1_000_000L, settings))
+    }
+
+    @Test
     fun `el tick conserva velocidad y loop`() {
         val settings = ReplaySettings(
             timeMode = TimeMode.REPLAY,

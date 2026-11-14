@@ -1,6 +1,8 @@
 package com.valledemena.ionosphere.ui.hud
 
 import com.valledemena.ionosphere.data.model.IonosondeStation
+import com.valledemena.ionosphere.data.model.StationHistoryPoint
+import java.time.Instant
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -68,5 +70,20 @@ class HudFoF2Test {
         val rows = HudFoF2.rows(listOf(station("EB040", 0.0), station("JR055", 1.25)))
         assertEquals("0.00 MHz", rows[0].display)
         assertEquals("1.25 MHz", rows[1].display)
+    }
+
+    @Test
+    fun `foF2 usa la historia en la epoca de replay`() {
+        val t0 = Instant.parse("2026-10-05T12:00:00Z").toEpochMilli()
+        val s = station("EB040", 8.0).copy(
+            history = listOf(
+                StationHistoryPoint(Instant.ofEpochMilli(t0).toString(), 6.0),
+                StationHistoryPoint(Instant.ofEpochMilli(t0 + 10 * 3_600_000L).toString(), 8.0),
+            ),
+        )
+
+        val rows = HudFoF2.rows(listOf(s), t0 + 5 * 3_600_000L)
+
+        assertEquals("7.00 MHz", rows.single().display)
     }
 }

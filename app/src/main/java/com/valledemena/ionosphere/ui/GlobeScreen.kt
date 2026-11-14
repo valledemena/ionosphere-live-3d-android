@@ -19,6 +19,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.valledemena.ionosphere.core.ReplaySettings
+import com.valledemena.ionosphere.core.replayEpochMs
+import com.valledemena.ionosphere.core.sampledAt
 import com.valledemena.ionosphere.core.tick
 import com.valledemena.ionosphere.data.model.IonosondeData
 import com.valledemena.ionosphere.data.net.Outcome
@@ -61,7 +63,10 @@ fun GlobeScreen(
     var isResumed by remember {
         mutableStateOf(lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED))
     }
+    var nowMs by remember { mutableStateOf(System.currentTimeMillis()) }
     val data = payloadOf(fof2Entry)
+    val sceneEpochMs = replayEpochMs(nowMs, replaySettings)
+    val displayData = data?.sampledAt(sceneEpochMs)
 
     DisposableEffect(lifecycleOwner, view) {
         val surfaceView = view
@@ -103,6 +108,16 @@ fun GlobeScreen(
         }
     }
 
+    // Un solo reloj para TimeBar, HUD y estaciones. Se congela en background.
+    LaunchedEffect(isResumed) {
+        if (!isResumed) return@LaunchedEffect
+        nowMs = System.currentTimeMillis()
+        while (true) {
+            delay(1_000L)
+            nowMs = System.currentTimeMillis()
+        }
+    }
+
     // El render solo consume la capa de datos ya existente (C1): HudStore.fof2().
     LaunchedEffect(hudStore) {
         if (hudStore == null) return@LaunchedEffect
@@ -115,8 +130,8 @@ fun GlobeScreen(
     LaunchedEffect(view) {
         view?.onStationPick = { code -> selectedCode = code }
     }
-    LaunchedEffect(view, data) {
-        view?.setStations(data)
+    LaunchedEffect(view, displayData) {
+        view?.setStations(displayData)
     }
     LaunchedEffect(view, pointSize) {
         view?.setPointSize(pointSize)
@@ -165,6 +180,7 @@ fun GlobeScreen(
                 store = hudStore,
                 pointSize = pointSize,
                 onPointSizeChange = onPointSizeChange,
+                epochMs = sceneEpochMs,
                 modifier = Modifier
                     .align(Alignment.TopStart)
                     .padding(10.dp),
@@ -174,13 +190,14 @@ fun GlobeScreen(
         TimeBar(
             settings = replaySettings,
             onChange = onReplayChange,
+            nowMs = nowMs,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(10.dp),
         )
 
         val popup = StationPopupModel.contentFor(
-            data = data,
+            data = displayData,
             code = selectedCode,
             ageLabel = fof2Entry?.ageLabel ?: "unavailable",
         )
