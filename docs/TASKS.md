@@ -21,14 +21,15 @@ documento canónico.
 | R1 | Esqueleto + CI | **cerrado** |
 | R2 | Nucleo de datos (contrato v1) | **cerrado** (issue #4 closed 2026-11-06, SHA ac31886) |
 | R3 | Escena v1 (lenguaje visual) | **cerrado 2026-11-14**: R3.0-R3.3 cerrados 2026-11-07; R3.4 cerrado (PR #39 merge `e12e100`; gate T4/T6 umbral 29,5; T7) |
-| R4 | Tiempo y profundidad | pendiente |
+| R4 | Tiempo y profundidad | **planificada 2026-11-14**: [plan docs-only](r4/PLAN-R4-TIEMPO-PROFUNDIDAD.md); sin código |
 | R5 | Cielo vivo | pendiente |
 | R6 | Release | pendiente |
 
 Aviso de nomenclatura: el track de **paridad visual** cerrado el 2026-11-13 usa
 los nombres "R4" y "R5" (de ahí "paridad-R5"), que **no** son las fases R4
 (Tiempo y profundidad) ni R5 (Cielo vivo) de este roadmap. Cuando un documento
-diga "paridad-R5" habla del track; las fases R4, R5 y R6 siguen sin empezar.
+diga "paridad-R5" habla del track; R4 está planificada y R5/R6 siguen sin
+empezar.
 
 Mínimo usable declarado por GLM: **R1 + R2** (globo + foF2/Kp/Dst reales con
 degradación honesta). Replay, raymarch, satélites, WSPR y magnetosfera esperan a
