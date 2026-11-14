@@ -15,6 +15,12 @@ import com.valledemena.ionosphere.render.AtmoShaderConstants
 import com.valledemena.ionosphere.render.AtmoShaderSource
 import com.valledemena.ionosphere.render.EarthShaderConstants
 import com.valledemena.ionosphere.render.GodRaysPass
+import com.valledemena.ionosphere.data.model.IonosondeData
+import com.valledemena.ionosphere.render.STATION_POINT_REF
+import com.valledemena.ionosphere.render.StationScreenPoint
+import com.valledemena.ionosphere.render.stationPick
+import com.valledemena.ionosphere.render.stationPointSizeClamp
+import com.valledemena.ionosphere.render.stationPositions
 import com.valledemena.ionosphere.core.OrbitCamera
 import com.valledemena.ionosphere.core.Rotation
 import com.valledemena.ionosphere.core.RotationClock
@@ -54,6 +60,7 @@ class GlobeRenderer(
     private val drawAtmosphere: Boolean = measure?.drawAtmosphere ?: true
     private val frozenModel: Boolean = measure?.frozenModel ?: false
     private val bloomEnabled: Boolean = measure?.bloom ?: true
+    private val stationsEnabled: Boolean = measure?.stations ?: true
     private val captureName: String? = measure?.captureName
     private var captured = false
 
@@ -120,6 +127,16 @@ class GlobeRenderer(
     private val model = FloatArray(16)
     private val viewProjection = FloatArray(16)
     private val mvp = FloatArray(16)
+    private val viewModel = FloatArray(16)
+
+    // R3.4: capa de ionosondas aislada; el globo no se refactoriza.
+    private var stationPoints: StationPointsRenderer? = null
+    @Volatile private var stationsData: IonosondeData? = null
+    @Volatile private var rawPointSize: Float = STATION_POINT_REF
+    @Volatile private var pickRequest: PickRequest? = null
+    @Volatile var onStationPick: ((String?) -> Unit)? = null
+
+    private data class PickRequest(val x: Float, val y: Float, val width: Int, val height: Int)
 
 private val clock = RotationClock()
 
@@ -164,6 +181,7 @@ private val clock = RotationClock()
 
         uploadMesh()
         uploadAtmoMesh()
+        stationPoints = StationPointsRenderer().also { it.init() }
 
         // Uniforms estaticos del shell: 12 pasos / 4 pasos de luz, desde pins (web builders.ts L130-131).
         GLES20.glUseProgram(atmoProgram)
@@ -183,7 +201,7 @@ private val clock = RotationClock()
         Log.i(
             TAG,
             "Superficie creada (creación nº ${clock.surfaceCreations}): ${mesh.vertexCount} vértices, ${mesh.triangleCount} triángulos, " +
-                "textura ${textureWidth}x${textureHeight}, atmo ${atmoSteps}/${atmoLightSteps}, GL ${GLES20.glGetString(GLES20.GL_VERSION)}",
+                "textura ${textureWidth}x${textureHeight}, atmo ${atmoSteps}/${atmoLightSteps}, stations=$stationsEnabled, GL ${GLES20.glGetString(GLES20.GL_VERSION)}",
         )
     }
 
@@ -257,6 +275,7 @@ private val clock = RotationClock()
             Matrix.rotateM(model, 0, angle, 0f, 1f, 0f)
         }
         Matrix.multiplyMM(mvp, 0, viewProjection, 0, model, 0)
+        Matrix.multiplyMM(viewModel, 0, view, 0, model, 0)
 
         GLES20.glUseProgram(program)
         GLES20.glUniformMatrix4fv(uMvp, 1, false, mvp, 0)
@@ -276,6 +295,20 @@ private val clock = RotationClock()
         GLES30.glBindVertexArray(vao)
         GLES20.glDrawElements(GLES20.GL_TRIANGLES, mesh.indices.size, GLES20.GL_UNSIGNED_SHORT, 0)
         GLES30.glBindVertexArray(0)
+
+        // R3.4: puntos despues del globo (depth test ON, depth write OFF) y
+        // antes de la atmosfera, como el material transparente del web.
+        if (stationsEnabled) {
+            stationPoints?.draw(
+                data = stationsData,
+                pointSize = stationPointSizeClamp(rawPointSize),
+                pixelRatio = pixelRatio(),
+                mvp = mvp,
+                viewModel = viewModel,
+                timeSeconds = SystemClock.uptimeMillis() / 1000f,
+            )
+            processPickRequest()
+        }
 
         if (drawAtmosphere) {
             // Pase del shell (atmosfera): aditivo, BackSide espejado con cull front,
@@ -569,6 +602,67 @@ private val clock = RotationClock()
             .also { it.position(0) }
 
     val cameraInteractive: Boolean get() = interactiveCamera
+
+    /** R3.4: datos de estaciones desde el HudStore (sin fetch propio). */
+    fun setStations(data: IonosondeData?) {
+        stationsData = data
+    }
+
+    /** R3.4: valor crudo del slider; el clamp [2,30] se aplica al dibujar. */
+    fun setPointSize(raw: Float) {
+        rawPointSize = raw
+    }
+
+    /** R3.4: encola un tap; la proyeccion se resuelve en el hilo GL. */
+    fun requestPick(x: Float, y: Float, width: Int, height: Int) {
+        pickRequest = PickRequest(x, y, width, height)
+    }
+
+    private fun pixelRatio(): Float =
+        context.resources.displayMetrics.density.coerceIn(1f, 2f)
+
+    private fun processPickRequest() {
+        val req = pickRequest ?: return
+        pickRequest = null
+        val data = stationsData
+        if (data == null || data.stations.isEmpty()) {
+            onStationPick?.invoke(null)
+            return
+        }
+
+        val positions = stationPositions(data.stations)
+        val points = ArrayList<StationScreenPoint>(data.stations.size)
+        val pos = FloatArray(4)
+        val world = FloatArray(4)
+        val clip = FloatArray(4)
+        val eyeLen = kotlin.math.sqrt(
+            cameraEye[0] * cameraEye[0] + cameraEye[1] * cameraEye[1] + cameraEye[2] * cameraEye[2],
+        ).coerceAtLeast(1e-6f)
+
+        for (i in data.stations.indices) {
+            pos[0] = positions[i * 3]
+            pos[1] = positions[i * 3 + 1]
+            pos[2] = positions[i * 3 + 2]
+            pos[3] = 1f
+            Matrix.multiplyMV(world, 0, model, 0, pos, 0)
+            Matrix.multiplyMV(clip, 0, mvp, 0, pos, 0)
+            val w = clip[3]
+            if (w <= 0f) continue
+            val ndcZ = clip[2] / w
+            if (ndcZ > 1f) continue
+
+            val sx = (clip[0] / w + 1f) * 0.5f * req.width
+            val sy = (1f - clip[1] / w) * 0.5f * req.height
+            val worldLen = kotlin.math.sqrt(
+                world[0] * world[0] + world[1] * world[1] + world[2] * world[2],
+            ).coerceAtLeast(1e-6f)
+            val facing = (
+                world[0] * cameraEye[0] + world[1] * cameraEye[1] + world[2] * cameraEye[2]
+                ) / (worldLen * eyeLen) >= 0f
+            points.add(StationScreenPoint(data.stations[i].code, sx, sy, facing))
+        }
+        onStationPick?.invoke(stationPick(points, req.x, req.y, 0f))
+    }
 
     fun onCameraDrag(dxPx: Float, dyPx: Float, viewportHeight: Int) {
         if (interactiveCamera) camera.dragFromPixels(dxPx, dyPx, viewportHeight)

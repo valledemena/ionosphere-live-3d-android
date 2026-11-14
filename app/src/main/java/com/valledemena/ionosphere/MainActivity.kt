@@ -1,5 +1,6 @@
 package com.valledemena.ionosphere
 
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -7,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.Lifecycle
@@ -29,6 +31,8 @@ import kotlinx.coroutines.Dispatchers
  */
 class MainActivity : ComponentActivity() {
 
+    private val pointSizeState = mutableStateOf(11f)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -44,6 +48,7 @@ class MainActivity : ComponentActivity() {
         // Grafo HUD R3.3: http + cache + 3 adapters + store. Solo foreground:
         // start en ON_START, stop en ON_STOP (contrato de datos s5).
         val hudStore = buildHudStore()
+        pointSizeState.value = readPointSize()
         lifecycle.addObserver(
             LifecycleEventObserver { _, event ->
                 when (event) {
@@ -61,10 +66,29 @@ class MainActivity : ComponentActivity() {
                         atmoSteps = atmoSteps,
                         atmoLightSteps = atmoLightSteps,
                         hudStore = hudStore,
+                        pointSize = pointSizeState.value,
+                        onPointSizeChange = { raw ->
+                            val v = raw.coerceIn(3f, 15f)
+                            pointSizeState.value = v
+                            savePointSize(v)
+                        },
                     )
                 }
             }
         }
+    }
+
+    /** Persistencia T2: solo la clave pointSize, 3..15, no finito -> 11. */
+    private fun readPointSize(): Float = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        .getFloat(KEY_POINT_SIZE, 11f)
+        .takeIf { it.isFinite() && it in 3f..15f }
+        ?: 11f
+
+    private fun savePointSize(value: Float) {
+        getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putFloat(KEY_POINT_SIZE, value)
+            .apply()
     }
 
     /** Grafo del HUD: http + cache + 3 adapters R2 + store TTL (single-source). */
@@ -77,5 +101,10 @@ class MainActivity : ComponentActivity() {
             ionosondes = IonosondeAdapter(http, cache),
             scope = CoroutineScope(Dispatchers.IO),
         )
+    }
+
+    private companion object {
+        private const val PREFS = "r34-settings"
+        private const val KEY_POINT_SIZE = "pointSize"
     }
 }

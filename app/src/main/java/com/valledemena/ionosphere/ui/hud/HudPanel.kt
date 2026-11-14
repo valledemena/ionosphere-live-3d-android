@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -29,6 +30,7 @@ import com.valledemena.ionosphere.data.model.IonosondeData
 import com.valledemena.ionosphere.data.model.SpaceWeatherData
 import com.valledemena.ionosphere.data.net.Outcome
 import kotlinx.coroutines.delay
+import kotlin.math.roundToInt
 
 /**
  * HUD de produccion R3.3 (PR-B): tres secciones espejo del pin web
@@ -41,6 +43,8 @@ import kotlinx.coroutines.delay
 fun HudPanel(
     store: HudStore,
     modifier: Modifier = Modifier,
+    pointSize: Float = 11f,
+    onPointSizeChange: (Float) -> Unit = {},
 ) {
     var kpEntry by remember { mutableStateOf(store.kp()) }
     var dstEntry by remember { mutableStateOf(store.dst()) }
@@ -66,6 +70,28 @@ fun HudPanel(
         KpSection(kpEntry)
         DstSection(dstEntry)
         FoF2Section(fof2Entry)
+        PointSizeSection(pointSize, onPointSizeChange)
+    }
+}
+
+// ---- Control del tamano de punto (slider 3..15, capa T2) ----
+
+@Composable
+private fun PointSizeSection(pointSize: Float, onChange: (Float) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = "punto " + pointSize.roundToInt(),
+            color = SLATE,
+            fontSize = 11.sp,
+            modifier = Modifier.width(52.dp),
+        )
+        Slider(
+            value = pointSize.coerceIn(3f, 15f),
+            onValueChange = { onChange(it.roundToInt().toFloat()) },
+            valueRange = 3f..15f,
+            steps = 11,
+            modifier = Modifier.width(140.dp),
+        )
     }
 }
 
