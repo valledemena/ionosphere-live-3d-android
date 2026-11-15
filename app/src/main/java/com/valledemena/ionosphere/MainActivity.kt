@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import com.valledemena.ionosphere.core.ReplaySettings
 import com.valledemena.ionosphere.data.net.InMemoryCache
 import com.valledemena.ionosphere.data.net.OkHttpHttpClient
 import com.valledemena.ionosphere.data.source.DstAdapter
@@ -32,6 +33,7 @@ import kotlinx.coroutines.Dispatchers
 class MainActivity : ComponentActivity() {
 
     private val pointSizeState = mutableStateOf(11f)
+    private val replaySettingsState = mutableStateOf(ReplaySettings())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -49,6 +51,7 @@ class MainActivity : ComponentActivity() {
         // start en ON_START, stop en ON_STOP (contrato de datos s5).
         val hudStore = buildHudStore()
         pointSizeState.value = readPointSize()
+        replaySettingsState.value = readReplaySettings()
         lifecycle.addObserver(
             LifecycleEventObserver { _, event ->
                 when (event) {
@@ -72,6 +75,16 @@ class MainActivity : ComponentActivity() {
                             pointSizeState.value = v
                             savePointSize(v)
                         },
+                        replaySettings = replaySettingsState.value,
+                        onReplayChange = { next ->
+                            val previous = replaySettingsState.value
+                            replaySettingsState.value = next
+                            if (previous.replaySpeed != next.replaySpeed ||
+                                previous.replayLoop != next.replayLoop
+                            ) {
+                                saveReplayPreferences(next)
+                            }
+                        },
                     )
                 }
             }
@@ -91,6 +104,29 @@ class MainActivity : ComponentActivity() {
             .apply()
     }
 
+    /**
+     * R4.2: la web no persiste timeMode/replayMinutes/replayPlaying. Al abrir
+     * se vuelve a LIVE y solo sobreviven velocidad y loop.
+     */
+    private fun readReplaySettings(): ReplaySettings {
+        val prefs = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val speed = prefs.getFloat(KEY_REPLAY_SPEED, Float.NaN).toDouble()
+        val loop = if (prefs.contains(KEY_REPLAY_LOOP)) {
+            prefs.getBoolean(KEY_REPLAY_LOOP, true)
+        } else {
+            null
+        }
+        return ReplaySettings.restored(storedSpeed = speed, storedLoop = loop)
+    }
+
+    private fun saveReplayPreferences(settings: ReplaySettings) {
+        getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putFloat(KEY_REPLAY_SPEED, settings.replaySpeed.toFloat())
+            .putBoolean(KEY_REPLAY_LOOP, settings.replayLoop)
+            .apply()
+    }
+
     /** Grafo del HUD: http + cache + 3 adapters R2 + store TTL (single-source). */
     private fun buildHudStore(): HudStore {
         val http = OkHttpHttpClient()
@@ -106,5 +142,7 @@ class MainActivity : ComponentActivity() {
     private companion object {
         private const val PREFS = "r34-settings"
         private const val KEY_POINT_SIZE = "pointSize"
+        private const val KEY_REPLAY_SPEED = "replaySpeed"
+        private const val KEY_REPLAY_LOOP = "replayLoop"
     }
 }
