@@ -28,7 +28,7 @@ class OrbitCamera(initialDistance: Float = INITIAL_DISTANCE) {
     fun dragFromPixels(dxPx: Float, dyPx: Float, viewportHeight: Int) {
         val height = viewportHeight.coerceAtLeast(1).toFloat()
         yawRad = wrap(yawRad - dxPx / height * TWO_PI)
-        pitchRad = (pitchRad - dyPx / height * PI.toFloat())
+        pitchRad = (pitchRad + dyPx / height * PI.toFloat())
             .coerceIn(-MAX_PITCH_RAD, MAX_PITCH_RAD)
         yawVelocity = 0f
         pitchVelocity = 0f
@@ -42,7 +42,7 @@ class OrbitCamera(initialDistance: Float = INITIAL_DISTANCE) {
     ) {
         val height = viewportHeight.coerceAtLeast(1).toFloat()
         yawVelocity = -xVelocityPxPerSecond / height * TWO_PI
-        pitchVelocity = -yVelocityPxPerSecond / height * PI.toFloat()
+        pitchVelocity = yVelocityPxPerSecond / height * PI.toFloat()
     }
 
     @Synchronized

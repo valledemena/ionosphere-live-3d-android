@@ -32,6 +32,60 @@ class SphereMeshTest {
     }
 
     @Test
+    fun `u medio cae en +X y u cero en -X`() {
+        val equator = 4 * (16 + 1)
+        val seam = equator + 0
+        val center = equator + 8
+        assertEquals(-1f, mesh.positions[seam * 3], 1e-6f)
+        assertEquals(0f, mesh.positions[seam * 3 + 2], 1e-6f)
+        assertEquals(1f, mesh.positions[center * 3], 1e-6f)
+        assertEquals(0f, mesh.positions[center * 3 + 2], 1e-6f)
+    }
+
+    @Test
+    fun `u tres cuartos cae en -Z (lon 90E)`() {
+        val equator = 4 * (16 + 1)
+        val east = equator + 12
+        assertEquals(0f, mesh.positions[east * 3], 1e-6f)
+        assertEquals(-1f, mesh.positions[east * 3 + 2], 1e-6f)
+    }
+
+    @Test
+    fun `el winding exterior apunta hacia fuera`() {
+        val ring = 4
+        val segment = 0
+        val top = ring * (16 + 1) + segment
+        val bottom = top + (16 + 1)
+        val topRight = top + 1
+
+        fun point(index: Int) = floatArrayOf(
+            mesh.positions[index * 3],
+            mesh.positions[index * 3 + 1],
+            mesh.positions[index * 3 + 2],
+        )
+
+        // Mismo orden que el primer triangulo del indice de la malla:
+        // top, bottom, topRight.
+        val a = point(top)
+        val b = point(bottom)
+        val c = point(topRight)
+        val u = floatArrayOf(b[0] - a[0], b[1] - a[1], b[2] - a[2])
+        val v = floatArrayOf(c[0] - a[0], c[1] - a[1], c[2] - a[2])
+        val normal = floatArrayOf(
+            u[1] * v[2] - u[2] * v[1],
+            u[2] * v[0] - u[0] * v[2],
+            u[0] * v[1] - u[1] * v[0],
+        )
+        val centroid = floatArrayOf(
+            (a[0] + b[0] + c[0]) / 3f,
+            (a[1] + b[1] + c[1]) / 3f,
+            (a[2] + b[2] + c[2]) / 3f,
+        )
+        val outward = normal[0] * centroid[0] + normal[1] * centroid[1] + normal[2] * centroid[2]
+        assertTrue("winding invertido: dot=$outward", outward > 0f)
+    }
+
+    @Test
     fun `la normal coincide con la posicion en una esfera unitaria`() {
         for (i in mesh.positions.indices) {
             assertEquals(mesh.positions[i], mesh.normals[i], 1e-6f)

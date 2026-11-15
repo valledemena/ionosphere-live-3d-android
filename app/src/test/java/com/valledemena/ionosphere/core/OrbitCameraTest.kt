@@ -32,13 +32,31 @@ class OrbitCameraTest {
         val after = FloatArray(3)
         camera.writeEye(after)
         assertTrue("yaw no cambió", after[0] < before[0])
-        assertTrue("pitch no cambió", after[1] < before[1])
+        assertTrue("pitch no cambió", after[1] > before[1])
     }
 
     @Test
     fun `el pitch se limita a 80 grados`() {
         val camera = OrbitCamera()
         camera.dragFromPixels(0f, 10_000f, 1000)
+
+        assertEquals(80f, camera.pitchDegrees(), 1e-4f)
+    }
+
+    @Test
+    fun `la inercia vertical sigue el mismo sentido que el arrastre`() {
+        val camera = OrbitCamera()
+        camera.flingFromPixels(0f, 1_000f, 1000)
+        camera.update(1f / 60f)
+        val eye = FloatArray(3)
+        camera.writeEye(eye)
+        assertTrue("la inercia vertical invirtió el gesto", eye[1] > 0f)
+    }
+
+    @Test
+    fun `el pitch tambien se limita a menos ochenta grados`() {
+        val camera = OrbitCamera()
+        camera.dragFromPixels(0f, -10_000f, 1000)
 
         assertEquals(-80f, camera.pitchDegrees(), 1e-4f)
     }
