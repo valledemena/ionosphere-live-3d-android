@@ -22,8 +22,7 @@ import com.valledemena.ionosphere.render.stationPick
 import com.valledemena.ionosphere.render.stationPointSizeClamp
 import com.valledemena.ionosphere.render.stationPositions
 import com.valledemena.ionosphere.core.OrbitCamera
-import com.valledemena.ionosphere.core.Rotation
-import com.valledemena.ionosphere.core.RotationClock
+import com.valledemena.ionosphere.core.SolarPosition
 import com.valledemena.ionosphere.core.SphereMesh
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -54,8 +53,9 @@ class GlobeRenderer(
     private val interactiveCamera = measure == null
     private val camera = OrbitCamera()
     private val cameraEye = FloatArray(3)
-    private val sunDir: FloatArray =
-        measure?.sunDir ?: floatArrayOf(SUN_DIR_X, SUN_DIR_Y, SUN_DIR_Z)
+    private val fixedSunDir: FloatArray? = measure?.sunDir
+    private val sunDir = FloatArray(4)
+    private val sunObject = FloatArray(4)
     private val fieldOfView: Float = measure?.fov ?: 42f
     private val drawAtmosphere: Boolean = measure?.drawAtmosphere ?: true
     private val frozenModel: Boolean = measure?.frozenModel ?: false
@@ -71,6 +71,11 @@ class GlobeRenderer(
             cameraEye[2] = measure.cameraEye[2]
         } else {
             camera.writeEye(cameraEye)
+        }
+        if (fixedSunDir != null) {
+            fixedSunDir.copyInto(sunDir)
+        } else {
+            SolarPosition.directionAt(System.currentTimeMillis()).copyInto(sunDir)
         }
     }
 
@@ -138,8 +143,6 @@ class GlobeRenderer(
 
     private data class PickRequest(val x: Float, val y: Float, val width: Int, val height: Int)
 
-private val clock = RotationClock()
-
     private var frameCount = 0
     private var lastCameraFrameMs = 0L
     private var textureWidth = 0
@@ -195,12 +198,11 @@ private val clock = RotationClock()
         nightTextureId = uploadTextureFromAsset("earth-night.png", srgb = true)
             ?: uploadTextureFromBitmap(R.drawable.earth_night, srgb = true)
 
-        clock.onSurfaceCreated(SystemClock.uptimeMillis())
         lastCameraFrameMs = 0L
 
         Log.i(
             TAG,
-            "Superficie creada (creación nº ${clock.surfaceCreations}): ${mesh.vertexCount} vértices, ${mesh.triangleCount} triángulos, " +
+            "Superficie creada: ${mesh.vertexCount} vértices, ${mesh.triangleCount} triángulos, " +
                 "textura ${textureWidth}x${textureHeight}, atmo ${atmoSteps}/${atmoLightSteps}, stations=$stationsEnabled, GL ${GLES20.glGetString(GLES20.GL_VERSION)}",
         )
     }
@@ -267,12 +269,19 @@ private val clock = RotationClock()
             Matrix.multiplyMM(viewProjection, 0, projection, 0, view, 0)
         }
 
-        val angle = clock.angleAt(SystemClock.uptimeMillis())
-
         Matrix.setIdentityM(model, 0)
         if (!frozenModel) {
             Matrix.rotateM(model, 0, -23.4f, 0f, 0f, 1f)   // inclinación axial declarada
-            Matrix.rotateM(model, 0, angle, 0f, 1f, 0f)
+        }
+        // Sol real (UTC) en el marco de la textura; se pasa a mundo con la
+        // misma matriz que la Tierra. Sin el giro decorativo de 60 s el
+        // terminador queda sobre la longitud correcta en cada instante.
+        if (fixedSunDir != null) {
+            fixedSunDir.copyInto(sunDir)
+        } else {
+            SolarPosition.directionAt(System.currentTimeMillis()).copyInto(sunObject)
+            sunObject[3] = 0f
+            Matrix.multiplyMV(sunDir, 0, model, 0, sunObject, 0)
         }
         Matrix.multiplyMM(mvp, 0, viewProjection, 0, model, 0)
         Matrix.multiplyMM(viewModel, 0, view, 0, model, 0)
@@ -315,9 +324,9 @@ private val clock = RotationClock()
             // sin escribir z (mirror de web builders.ts L122-138). Restauracion completa
             // de estado: culling vuelve a desactivado (estado global del renderer),
             // depth mask y blend vuelven a sus valores previos al pase.
-            // Web NO rota la Tierra (modelMatrix = identity). El ciclo dia/noche viene
-            // del uSunDir que cambia con la estacion. Android debe igualar: uAtmoMvp = viewProjection,
-            // uAtmoModel = identity.
+            // Web NO rota la Tierra (modelMatrix = identity). El ciclo dia/noche
+            // viene del uSunDir horario. Android mantiene el shell sin rotacion;
+            // el terminador es el mismo plano porque uSunDir ya esta en mundo.
             GLES20.glUseProgram(atmoProgram)
             GLES20.glUniformMatrix4fv(uAtmoMvp, 1, false, viewProjection, 0)
             GLES20.glUniformMatrix4fv(uAtmoModel, 1, false, IDENTITY_MATRIX, 0)
@@ -327,12 +336,12 @@ private val clock = RotationClock()
             GLES20.glBlendFunc(GLES20.GL_ONE, GLES20.GL_ONE)
             GLES20.glDepthMask(false)
             GLES20.glEnable(GLES20.GL_CULL_FACE)
-            // SphereMesh winds its triangles CW when seen from outside, so the
-            // far hemisphere is FRONT-facing under the default CCW rule. The
-            // web draws the shell with THREE.BackSide (far hemisphere): cull
-            // BACK keeps exactly that half. Culling FRONT kept the near half,
-            // where t1 - t0 <= 0 and the ray march discarded every fragment.
-            GLES20.glCullFace(GLES20.GL_BACK)
+            // SphereMesh winds its triangles CCW when seen from outside, so
+            // the near hemisphere is FRONT-facing. The web draws the shell
+            // with THREE.BackSide (far hemisphere): cull FRONT keeps exactly
+            // that half. Culling BACK would keep the near half, where
+            // t1 - t0 <= 0 and the ray march discarded every fragment.
+            GLES20.glCullFace(GLES20.GL_FRONT)
             GLES30.glBindVertexArray(atmoVao)
             GLES20.glDrawElements(GLES20.GL_TRIANGLES, mesh.indices.size, GLES20.GL_UNSIGNED_SHORT, 0)
             GLES30.glBindVertexArray(0)
@@ -684,9 +693,6 @@ private val clock = RotationClock()
 
     companion object {
         private const val TAG = "GlobeRenderer"
-        private const val SUN_DIR_X = 0.6f
-        private const val SUN_DIR_Y = 0.35f
-        private const val SUN_DIR_Z = 0.72f
         private val IDENTITY_MATRIX = FloatArray(16).apply { Matrix.setIdentityM(this, 0) }
 
         private const val VERTEX_BODY = """

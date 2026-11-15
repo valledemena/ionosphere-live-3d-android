@@ -41,7 +41,9 @@ class SphereMesh private constructor(
                 val cosPhi = Math.cos(phi)
                 for (segment in 0..segments) {
                     val theta = 2.0 * Math.PI * (segment.toDouble() / segments) // 0 .. 2PI
-                    val x = (sinPhi * Math.cos(theta)).toFloat()
+                    // Three.SphereGeometry: x = -sin(phi)*cos(theta). El signo
+                    // opuesto espejaba la textura de este a oeste.
+                    val x = (-sinPhi * Math.cos(theta)).toFloat()
                     val y = cosPhi.toFloat()
                     val z = (sinPhi * Math.sin(theta)).toFloat()
 
@@ -70,6 +72,10 @@ class SphereMesh private constructor(
                     val topRight = top + 1
                     val bottomRight = bottom + 1
 
+                    // Con x negado, el orden original queda CCW visto desde
+                    // fuera (normal hacia fuera). El shell atmosferico
+                    // compensa con cull FRONT para seguir dibujando la cara
+                    // lejana, igual que el BackSide de la web.
                     indices[i++] = top.toShort()
                     indices[i++] = bottom.toShort()
                     indices[i++] = topRight.toShort()
