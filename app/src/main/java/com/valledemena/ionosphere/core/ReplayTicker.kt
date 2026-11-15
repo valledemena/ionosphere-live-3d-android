@@ -21,3 +21,12 @@ fun ReplaySettings.tick(dtSec: Double): ReplaySettings {
         ),
     )
 }
+
+/**
+ * Época efectiva de la escena: en LIVE es «ahora»; en REPLAY resta los
+ * minutos de historia. Es la misma cuenta que usa el reloj del TimeBar.
+ */
+fun replayEpochMs(nowMs: Long, settings: ReplaySettings): Long {
+    val effectiveMinutes = timeBarEffectiveMinutes(settings.timeMode, settings.replayMinutes)
+    return nowMs - (effectiveMinutes * 60_000.0).toLong()
+}

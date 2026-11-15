@@ -45,6 +45,7 @@ fun HudPanel(
     modifier: Modifier = Modifier,
     pointSize: Float = 11f,
     onPointSizeChange: (Float) -> Unit = {},
+    epochMs: Long? = null,
 ) {
     var kpEntry by remember { mutableStateOf(store.kp()) }
     var dstEntry by remember { mutableStateOf(store.dst()) }
@@ -69,7 +70,7 @@ fun HudPanel(
     ) {
         KpSection(kpEntry)
         DstSection(dstEntry)
-        FoF2Section(fof2Entry)
+        FoF2Section(fof2Entry, epochMs)
         PointSizeSection(pointSize, onPointSizeChange)
     }
 }
@@ -142,7 +143,7 @@ private fun DstSection(e: HudEntry<DstData>?) {
 // ---- Seccion foF2: una fila por estacion core, orden por codigo ----
 
 @Composable
-private fun FoF2Section(e: HudEntry<IonosondeData>?) {
+private fun FoF2Section(e: HudEntry<IonosondeData>?, epochMs: Long?) {
     SectionHeader("foF2", e)
     val data = payloadOf(e)
     if (data == null) {
@@ -150,7 +151,7 @@ private fun FoF2Section(e: HudEntry<IonosondeData>?) {
         return
     }
     Text(
-        text = HudFoF2.rows(data.stations).joinToString("\n") { row -> row.code + "  " + row.display },
+        text = HudFoF2.rows(data.stations, epochMs).joinToString("\n") { row -> row.code + "  " + row.display },
         color = Color.White,
         fontSize = 11.sp,
     )
