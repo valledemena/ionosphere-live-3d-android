@@ -56,6 +56,13 @@ class GlobeRenderer(
     private val fixedSunDir: FloatArray? = measure?.sunDir
     private val sunDir = FloatArray(4)
     private val sunObject = FloatArray(4)
+
+    /**
+     * Epoca solar fijada por replay. `null` = LIVE: el Sol se recalcula con el
+     * reloj de pared en cada frame. En REPLAY la fija GlobeScreen.
+     */
+    @Volatile
+    private var sceneSolarEpochMs: Long? = null
     private val fieldOfView: Float = measure?.fov ?: 42f
     private val drawAtmosphere: Boolean = measure?.drawAtmosphere ?: true
     private val frozenModel: Boolean = measure?.frozenModel ?: false
@@ -75,7 +82,7 @@ class GlobeRenderer(
         if (fixedSunDir != null) {
             fixedSunDir.copyInto(sunDir)
         } else {
-            SolarPosition.directionAt(System.currentTimeMillis()).copyInto(sunDir)
+            SolarPosition.directionAt(sceneSolarEpochMs ?: System.currentTimeMillis()).copyInto(sunDir)
         }
     }
 
@@ -279,7 +286,10 @@ class GlobeRenderer(
         if (fixedSunDir != null) {
             fixedSunDir.copyInto(sunDir)
         } else {
-            SolarPosition.directionAt(System.currentTimeMillis()).copyInto(sunObject)
+            // LIVE: reloj de pared en cada frame, sin escalones de 1 s.
+            // REPLAY: época fijada por GlobeScreen, la misma que HUD/estaciones.
+            val epochMs = sceneSolarEpochMs ?: System.currentTimeMillis()
+            SolarPosition.directionAt(epochMs).copyInto(sunObject)
             sunObject[3] = 0f
             Matrix.multiplyMV(sunDir, 0, model, 0, sunObject, 0)
         }
@@ -615,6 +625,14 @@ class GlobeRenderer(
     /** R3.4: datos de estaciones desde el HudStore (sin fetch propio). */
     fun setStations(data: IonosondeData?) {
         stationsData = data
+    }
+
+    /**
+     * Replay: fija la época solar de la escena. `null` vuelve a LIVE y el Sol
+     * se recalcula con el reloj de pared en cada frame.
+     */
+    fun setSolarEpoch(epochMs: Long?) {
+        sceneSolarEpochMs = epochMs
     }
 
     /** R3.4: valor crudo del slider; el clamp [2,30] se aplica al dibujar. */

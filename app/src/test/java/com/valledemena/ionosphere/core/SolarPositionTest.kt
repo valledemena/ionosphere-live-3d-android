@@ -56,16 +56,43 @@ class SolarPositionTest {
     fun `el sol cae sobre su punto subsolar`() {
         val d = SolarPosition.directionAt(1794778924000L)
         val (lat, lon) = subsolar(d)
-        val cosLat = cos(Math.toRadians(lat.toDouble())).toFloat()
-        val p = floatArrayOf(
-            cosLat * cos(Math.toRadians(lon.toDouble())).toFloat(),
-            sin(Math.toRadians(lat.toDouble())).toFloat(),
-            -cosLat * sin(Math.toRadians(lon.toDouble())).toFloat(),
-        )
+        val p = sceneVector(lat, lon)
         val dot = d[0] * p[0] + d[1] * p[1] + d[2] * p[2]
         assertTrue("dot=$dot", dot > 0.999f)
         val anti = d[0] * -p[0] + d[1] * -p[1] + d[2] * -p[2]
         assertTrue("antipoda dot=$anti", anti < -0.999f)
+    }
+
+    @Test
+    fun `marco de escena coherente en las seis anclas`() {
+        val anchors = listOf(
+            946728000000L to "J2000",
+            1774008000000L to "2026-03-20",
+            1782043200000L to "2026-06-21",
+            1791374400000L to "2026-10-07",
+            1794778924000L to "captura",
+            1794787200000L to "2026-11-16",
+        )
+        for ((epochMs, label) in anchors) {
+            val d = SolarPosition.directionAt(epochMs)
+            val len = sqrt(d[0] * d[0] + d[1] * d[1] + d[2] * d[2])
+            assertEquals("$label norma", 1f, len, 1e-6f)
+            val (lat, lon) = subsolar(d)
+            val p = sceneVector(lat, lon)
+            val dot = d[0] * p[0] + d[1] * p[1] + d[2] * p[2]
+            assertTrue("$label dot=$dot", dot > 0.999f)
+            val anti = d[0] * -p[0] + d[1] * -p[1] + d[2] * -p[2]
+            assertTrue("$label antipoda=$anti", anti < -0.999f)
+        }
+    }
+
+    private fun sceneVector(lat: Float, lon: Float): FloatArray {
+        val cosLat = cos(Math.toRadians(lat.toDouble())).toFloat()
+        return floatArrayOf(
+            cosLat * cos(Math.toRadians(lon.toDouble())).toFloat(),
+            sin(Math.toRadians(lat.toDouble())).toFloat(),
+            -cosLat * sin(Math.toRadians(lon.toDouble())).toFloat(),
+        )
     }
 
     private fun assertSubsolar(epochMs: Long, expectedLat: Float, expectedLon: Float) {

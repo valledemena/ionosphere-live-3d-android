@@ -32,6 +32,12 @@ class ReplayTimeTest {
     }
 
     @Test
+    fun `diez minutos de un tick 1x son dos grados y medio`() {
+        val minutes = 1000.0 - replayAdvance(1000.0, 1.0, 0.5, max, true)
+        assertEquals(2.5, minutes * 0.25, 1e-9)
+    }
+
+    @Test
     fun `la velocidad escala el avance`() {
         assertEquals(960.0, replayAdvance(1000.0, 4.0, 0.5, max, true), 0.0)
     }

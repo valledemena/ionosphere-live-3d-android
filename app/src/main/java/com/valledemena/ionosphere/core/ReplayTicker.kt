@@ -30,3 +30,13 @@ fun replayEpochMs(nowMs: Long, settings: ReplaySettings): Long {
     val effectiveMinutes = timeBarEffectiveMinutes(settings.timeMode, settings.replayMinutes)
     return nowMs - (effectiveMinutes * 60_000.0).toLong()
 }
+
+/**
+ * Epoca solar que debe usar la escena.
+ *
+ * En LIVE devuelve `null`: el renderer lee el reloj en cada frame para que el
+ * terminador se mueva de forma continua. En REPLAY devuelve la misma epoca de
+ * escena que usan HUD y estaciones.
+ */
+fun solarEpochForScene(nowMs: Long, settings: ReplaySettings): Long? =
+    if (settings.timeMode == TimeMode.REPLAY) replayEpochMs(nowMs, settings) else null
