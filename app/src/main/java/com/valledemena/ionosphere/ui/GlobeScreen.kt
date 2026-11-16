@@ -20,6 +20,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.valledemena.ionosphere.core.ReplaySettings
 import com.valledemena.ionosphere.core.replayEpochMs
+import com.valledemena.ionosphere.core.solarEpochForScene
 import com.valledemena.ionosphere.core.sampledAt
 import com.valledemena.ionosphere.core.tick
 import com.valledemena.ionosphere.data.model.IonosondeData
@@ -66,6 +67,7 @@ fun GlobeScreen(
     var nowMs by remember { mutableStateOf(System.currentTimeMillis()) }
     val data = payloadOf(fof2Entry)
     val sceneEpochMs = replayEpochMs(nowMs, replaySettings)
+    val solarEpochMs = solarEpochForScene(nowMs, replaySettings)
     val displayData = data?.sampledAt(sceneEpochMs)
 
     DisposableEffect(lifecycleOwner, view) {
@@ -132,6 +134,9 @@ fun GlobeScreen(
     }
     LaunchedEffect(view, displayData) {
         view?.setStations(displayData)
+    }
+    LaunchedEffect(view, solarEpochMs) {
+        view?.setSolarEpoch(solarEpochMs)
     }
     LaunchedEffect(view, pointSize) {
         view?.setPointSize(pointSize)

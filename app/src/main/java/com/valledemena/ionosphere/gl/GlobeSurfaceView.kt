@@ -91,6 +91,11 @@ class GlobeSurfaceView @JvmOverloads constructor(
         renderer.setStations(data)
     }
 
+    /** Replay: `null` = LIVE; el renderer elige el reloj. */
+    fun setSolarEpoch(epochMs: Long?) {
+        renderer.setSolarEpoch(epochMs)
+    }
+
     /** R3.4: valor crudo del slider; el clamp [2,30] vive en el renderer. */
     fun setPointSize(raw: Float) {
         renderer.setPointSize(raw)

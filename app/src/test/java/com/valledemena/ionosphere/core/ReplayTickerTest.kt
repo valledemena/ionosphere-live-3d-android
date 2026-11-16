@@ -2,6 +2,7 @@ package com.valledemena.ionosphere.core
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -96,5 +97,17 @@ class ReplayTickerTest {
         assertEquals(8.0, next.replaySpeed, 0.0)
         assertFalse(next.replayLoop)
         assertEquals(TimeMode.REPLAY, next.timeMode)
+    }
+
+    @Test
+    fun `live deja el sol al reloj de cada frame`() {
+        val settings = ReplaySettings(timeMode = TimeMode.LIVE, replayMinutes = 120.0)
+        assertNull(solarEpochForScene(1_000_000L, settings))
+    }
+
+    @Test
+    fun `replay fija la epoca solar de la escena`() {
+        val settings = ReplaySettings(timeMode = TimeMode.REPLAY, replayMinutes = 120.0)
+        assertEquals(1_000_000L - 7_200_000L, solarEpochForScene(1_000_000L, settings)!!)
     }
 }
