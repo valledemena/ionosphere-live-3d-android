@@ -11,10 +11,17 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import com.valledemena.ionosphere.R
 import com.valledemena.ionosphere.core.PlaceholderGlobeTexture
+import com.valledemena.ionosphere.core.iono.DensityVolume
+import com.valledemena.ionosphere.core.iono.SLICE_OPACITY_DEFAULT
+import com.valledemena.ionosphere.core.iono.SlicePair
 import com.valledemena.ionosphere.render.AtmoShaderConstants
 import com.valledemena.ionosphere.render.AtmoShaderSource
 import com.valledemena.ionosphere.render.EarthShaderConstants
 import com.valledemena.ionosphere.render.GodRaysPass
+import com.valledemena.ionosphere.render.SLICE_VISIBLE_DEFAULT
+import com.valledemena.ionosphere.render.SliceEndpoints
+import com.valledemena.ionosphere.render.SliceStatus
+import com.valledemena.ionosphere.render.planSliceFrame
 import com.valledemena.ionosphere.data.model.IonosondeData
 import com.valledemena.ionosphere.render.STATION_POINT_REF
 import com.valledemena.ionosphere.render.StationScreenPoint
@@ -148,6 +155,17 @@ class GlobeRenderer(
     @Volatile private var pickRequest: PickRequest? = null
     @Volatile var onStationPick: ((String?) -> Unit)? = null
 
+    // R4.5 P4b: capa de cortina, apagada por defecto (`SliceLayer.h:41`). El
+    // volumen se inyecta y hoy es null: R4.6 cablea `profileGrid` +
+    // `buildDensityVolume` y con eso llega el gate visual.
+    private var sliceLayer: SliceLayerRenderer? = null
+    @Volatile private var sliceShow = SLICE_VISIBLE_DEFAULT
+    @Volatile private var sliceEndpoints: SliceEndpoints? = null
+    @Volatile private var sliceVolume: DensityVolume? = null
+    private var slicePair: SlicePair? = null
+    private var sliceForce = false
+    @Volatile private var slicePeakLogNe = 0.0f
+
     private data class PickRequest(val x: Float, val y: Float, val width: Int, val height: Int)
 
     private var frameCount = 0
@@ -192,6 +210,15 @@ class GlobeRenderer(
         uploadMesh()
         uploadAtmoMesh()
         stationPoints = StationPointsRenderer().also { it.init() }
+        // R4.5 P4b: capa de cortina, apagada por defecto. Si la superficie se
+        // recrea, la instancia anterior se libera antes de crear la nueva: sus
+        // handles pertenecen a un contexto ya perdido y no se reutilizan, y la
+        // malla horneada se da por perdida (`slicePair = null`, `force`).
+        sliceLayer?.dispose()
+        sliceLayer = SliceLayerRenderer().also { it.init() }
+        slicePair = null
+        slicePeakLogNe = 0.0f
+        sliceForce = sliceVolume != null
 
         // Uniforms estaticos del shell: 12 pasos / 4 pasos de luz, desde pins (web builders.ts L130-131).
         GLES20.glUseProgram(atmoProgram)
@@ -329,6 +356,10 @@ class GlobeRenderer(
             processPickRequest()
         }
 
+        // R4.5 P4b: cortina Ne(h) despues del globo y de las estaciones, antes
+        // de la atmosfera (bloque de capas de datos del oraculo, `App.cpp:4539`).
+        drawSlice()
+
         if (drawAtmosphere) {
             // Pase del shell (atmosfera): aditivo, BackSide espejado con cull front,
             // sin escribir z (mirror de web builders.ts L122-138). Restauracion completa
@@ -385,6 +416,35 @@ class GlobeRenderer(
             captured = true
             captureFrame(captureName)
         }
+    }
+
+    /**
+     * P4b: planifica y dibuja la cortina del frame (espejo de
+     * `App::rebuildSlice` + `SliceLayer::render`).
+     *
+     * El plan es puro y vive en `render/SliceLayerPlan.kt`. Sin volumen
+     * inyectado (`sliceVolume == null`) nunca hay `Rebuild`: no se sube nada a
+     * la GPU y la capa no dibuja. Es la precondicion que deja el gate visual de
+     * R4.5 como **NO PROBADO**, heredado por R4.6.
+     */
+    private fun drawSlice() {
+        val layer = sliceLayer ?: return
+        val plan = planSliceFrame(sliceShow, sliceVolume, sliceEndpoints, slicePair, sliceForce)
+        sliceForce = false
+        if (plan.hasUpload) {
+            val vertices = plan.vertices
+            val indices = plan.indices
+            val texels = plan.texels
+            if (vertices != null && indices != null && texels != null) {
+                layer.upload(vertices, indices, texels, plan.seg, plan.lvl)
+                slicePair = plan.pair
+                slicePeakLogNe = plan.peakLogNe
+            }
+        }
+        // `SliceLayer::render` dibuja con `visible && hasData` y no borra la
+        // malla anterior cuando el par deja de ser valido.
+        if (!sliceShow || !layer.hasData()) return
+        layer.draw(mvp, SLICE_OPACITY_DEFAULT)
     }
 
     /**
@@ -638,6 +698,51 @@ class GlobeRenderer(
     /** R3.4: valor crudo del slider; el clamp [2,30] se aplica al dibujar. */
     fun setPointSize(raw: Float) {
         rawPointSize = raw
+    }
+
+    /**
+     * R4.5 P4b: enciende o apaga la cortina. Por defecto apagada
+     * (`SliceLayer.h:41`, `visible=false`).
+     */
+    fun setShowSlice(show: Boolean) {
+        sliceShow = show
+    }
+
+    /**
+     * R4.5 P4b: volumen activo para la cortina. `null` = no hay volumen en
+     * runtime (estado de R4.5: R4.4 entrego el volumen puro y nadie lo cablea
+     * todavia). Un volumen nuevo fuerza rehorneado, como `rebuildSlice(true)`
+     * cuando llegan datos (`App.cpp:2745`).
+     */
+    fun setSliceVolume(volume: DensityVolume?) {
+        if (sliceVolume === volume) return
+        sliceVolume = volume
+        sliceForce = volume != null
+    }
+
+    /**
+     * R4.5 P4b: par A-B de estaciones. `null` = sin par valido. El cambio de
+     * codigos lo detecta el plan por comparacion (`rebuildSlice(false)`).
+     */
+    fun setSliceEndpoints(endpoints: SliceEndpoints?) {
+        if (sliceEndpoints == endpoints) return
+        sliceEndpoints = endpoints
+    }
+
+    /** R4.5 P4b: estado que el HUD necesita para el readout de la cortina. */
+    fun sliceStatus(): SliceStatus = SliceStatus(
+        codeA = slicePair?.codeA,
+        codeB = slicePair?.codeB,
+        peakLogNe = slicePeakLogNe,
+        hasData = sliceLayer?.hasData() == true,
+    )
+
+    /** R4.5 P4b: libera la capa. Idempotente y sin GL si ya estaba liberada. */
+    fun disposeSliceLayer() {
+        sliceLayer?.dispose()
+        sliceLayer = null
+        slicePair = null
+        slicePeakLogNe = 0.0f
     }
 
     /** R3.4: encola un tap; la proyeccion se resuelve en el hilo GL. */

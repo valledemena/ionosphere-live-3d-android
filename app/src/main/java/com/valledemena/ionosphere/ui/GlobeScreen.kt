@@ -26,6 +26,8 @@ import com.valledemena.ionosphere.core.tick
 import com.valledemena.ionosphere.data.model.IonosondeData
 import com.valledemena.ionosphere.data.net.Outcome
 import com.valledemena.ionosphere.gl.GlobeSurfaceView
+import com.valledemena.ionosphere.render.SLICE_VISIBLE_DEFAULT
+import com.valledemena.ionosphere.render.SliceStatus
 import com.valledemena.ionosphere.ui.hud.HudEntry
 import com.valledemena.ionosphere.ui.hud.HudPanel
 import com.valledemena.ionosphere.ui.hud.HudStore
@@ -65,6 +67,10 @@ fun GlobeScreen(
         mutableStateOf(lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED))
     }
     var nowMs by remember { mutableStateOf(System.currentTimeMillis()) }
+    // R4.5 P4b: la cortina arranca apagada (`SliceLayer.h:41`); el estado del
+    // readout sale del renderer, no se inventa aqui.
+    var sliceOn by remember { mutableStateOf(SLICE_VISIBLE_DEFAULT) }
+    var sliceStatus by remember { mutableStateOf(SliceStatus(null, null, 0f, false)) }
     val data = payloadOf(fof2Entry)
     val sceneEpochMs = replayEpochMs(nowMs, replaySettings)
     val solarEpochMs = solarEpochForScene(nowMs, replaySettings)
@@ -142,6 +148,18 @@ fun GlobeScreen(
         view?.setPointSize(pointSize)
     }
 
+    // R4.5 P4b: toggle de la cortina + refresco del readout al mismo ritmo que
+    // el resto del HUD. Sin volumen inyectado, `hasData` es false y el panel
+    // muestra el prompt del oraculo.
+    LaunchedEffect(view, sliceOn) {
+        val surfaceView = view ?: return@LaunchedEffect
+        surfaceView.setShowSlice(sliceOn)
+        while (true) {
+            sliceStatus = surfaceView.sliceStatus()
+            delay(1_000L)
+        }
+    }
+
     // R4.2: mismo intervalo que el oráculo (500 ms, dt = 0.5). El efecto no se
     // reinicia al cambiar de minuto: lee el estado más reciente en cada tick.
     val latestReplay by rememberUpdatedState(replaySettings)
@@ -186,6 +204,9 @@ fun GlobeScreen(
                 pointSize = pointSize,
                 onPointSizeChange = onPointSizeChange,
                 epochMs = sceneEpochMs,
+                sliceOn = sliceOn,
+                onSliceToggle = { sliceOn = it },
+                sliceStatus = sliceStatus,
                 modifier = Modifier
                     .align(Alignment.TopStart)
                     .padding(10.dp),
