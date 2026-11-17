@@ -9,7 +9,10 @@ import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.VelocityTracker
 import com.valledemena.ionosphere.core.FramePacer
+import com.valledemena.ionosphere.core.iono.DensityVolume
 import com.valledemena.ionosphere.data.model.IonosondeData
+import com.valledemena.ionosphere.render.SliceEndpoints
+import com.valledemena.ionosphere.render.SliceStatus
 import kotlin.math.hypot
 import javax.microedition.khronos.egl.EGL10
 import javax.microedition.khronos.egl.EGLConfig
@@ -101,6 +104,24 @@ class GlobeSurfaceView @JvmOverloads constructor(
         renderer.setPointSize(raw)
     }
 
+    /** R4.5 P4b: enciende o apaga la cortina (por defecto apagada). */
+    fun setShowSlice(show: Boolean) {
+        renderer.setShowSlice(show)
+    }
+
+    /** R4.5 P4b: volumen para la cortina; hoy siempre `null` (R4.6 lo cablea). */
+    fun setSliceVolume(volume: DensityVolume?) {
+        renderer.setSliceVolume(volume)
+    }
+
+    /** R4.5 P4b: par A-B de estaciones; `null` = sin par valido. */
+    fun setSliceEndpoints(endpoints: SliceEndpoints?) {
+        renderer.setSliceEndpoints(endpoints)
+    }
+
+    /** R4.5 P4b: estado del readout de la cortina (codigos, pico y si hay malla). */
+    fun sliceStatus(): SliceStatus = renderer.sliceStatus()
+
     /** Empieza a pedir frames. Idempotente. */
     fun start() {
         if (running) return
@@ -191,6 +212,9 @@ class GlobeSurfaceView @JvmOverloads constructor(
 
     override fun onDetachedFromWindow() {
         stop()
+        // R4.5 P4b: la capa de la cortina se libera en el hilo GL, que sigue
+        // vivo en este punto; si ya no lo estuviera, `queueEvent` no hace nada.
+        queueEvent { renderer.disposeSliceLayer() }
         velocityTracker?.recycle()
         velocityTracker = null
         super.onDetachedFromWindow()

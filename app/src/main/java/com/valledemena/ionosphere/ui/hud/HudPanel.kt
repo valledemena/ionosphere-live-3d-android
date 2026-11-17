@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -29,6 +30,7 @@ import com.valledemena.ionosphere.data.model.DstData
 import com.valledemena.ionosphere.data.model.IonosondeData
 import com.valledemena.ionosphere.data.model.SpaceWeatherData
 import com.valledemena.ionosphere.data.net.Outcome
+import com.valledemena.ionosphere.render.SliceStatus
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
@@ -46,6 +48,9 @@ fun HudPanel(
     pointSize: Float = 11f,
     onPointSizeChange: (Float) -> Unit = {},
     epochMs: Long? = null,
+    sliceOn: Boolean = false,
+    onSliceToggle: (Boolean) -> Unit = {},
+    sliceStatus: SliceStatus = SliceStatus(null, null, 0f, false),
 ) {
     var kpEntry by remember { mutableStateOf(store.kp()) }
     var dstEntry by remember { mutableStateOf(store.dst()) }
@@ -72,7 +77,33 @@ fun HudPanel(
         DstSection(dstEntry)
         FoF2Section(fof2Entry, epochMs)
         PointSizeSection(pointSize, onPointSizeChange)
+        SliceSection(sliceOn, sliceStatus, onSliceToggle)
     }
+}
+
+// ---- Seccion cortina Ne(h): toggle + readout del oraculo (P4b) ----
+
+/**
+ * Toggle de la cortina y su readout. Con la capa encendida y sin volumen en
+ * runtime el texto es el prompt del oraculo: la linea `A -> B  pk %.1f` solo
+ * aparece cuando la GPU tiene una malla horneada (`App.cpp:5338`).
+ */
+@Composable
+private fun SliceSection(on: Boolean, status: SliceStatus, onToggle: (Boolean) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = "cortina",
+            color = SLATE,
+            fontSize = 11.sp,
+            modifier = Modifier.width(52.dp),
+        )
+        Switch(checked = on, onCheckedChange = onToggle)
+    }
+    Text(
+        text = HudSlice.readout(status.codeA, status.codeB, status.peakLogNe, status.hasData),
+        color = SLATE,
+        fontSize = 11.sp,
+    )
 }
 
 // ---- Control del tamano de punto (slider 3..15, capa T2) ----
