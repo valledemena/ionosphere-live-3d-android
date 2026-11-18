@@ -213,10 +213,10 @@ fun GlobeScreen(
     // cambiar el payload o al cruzar un escalon solar de 10 min: 72x72x48
     // celdas no caben en el hilo de UI, y el Sol se mueve despacio. Apagada la
     // capa no se construye nada (delta ON/OFF limpio para el protocolo R4.6.5).
-    val solarVolumeStepMs = solarEpochMs?.let { (it / SOLAR_VOLUME_STEP_MS) * SOLAR_VOLUME_STEP_MS }
+    val solarVolumeStepMs = sliceVolumeSolarStepMs(nowMs, solarEpochMs)
     LaunchedEffect(view, sliceOn, data, solarVolumeStepMs) {
         val surfaceView = view ?: return@LaunchedEffect
-        if (!sliceOn || data == null || solarVolumeStepMs == null) {
+        if (!sliceOn || data == null) {
             surfaceView.setSliceVolume(null)
             return@LaunchedEffect
         }
@@ -318,6 +318,18 @@ fun GlobeScreen(
 
 /** Escalon solar del volumen: 10 min, muy por debajo del movimiento real. */
 private const val SOLAR_VOLUME_STEP_MS = 600_000L
+
+/**
+ * Epoca con la que se hornea el volumen Ne(h), redondeada al escalon solar.
+ *
+ * En LIVE [solarEpochForScene] devuelve `null` a proposito: el renderer lee el
+ * reloj en cada frame para mover el terminador. El volumen no puede hacer eso
+ * (se hornea en [Dispatchers.Default] y se sube como textura), asi que su
+ * epoca de LIVE es `nowMs`; en REPLAY manda la epoca de escena. Redondear hacia
+ * abajo deja el efecto estable dentro del escalon y lo rehornea al cruzarlo.
+ */
+internal fun sliceVolumeSolarStepMs(nowMs: Long, solarEpochMs: Long?): Long =
+    ((solarEpochMs ?: nowMs) / SOLAR_VOLUME_STEP_MS) * SOLAR_VOLUME_STEP_MS
 
 /**
  * F10.7 del payload de clima espacial. Solo alimenta la mezcla climatologica
