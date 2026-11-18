@@ -3,6 +3,9 @@ package com.valledemena.ionosphere.ui.hud
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -10,10 +13,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -51,6 +59,11 @@ fun HudPanel(
     sliceOn: Boolean = false,
     onSliceToggle: (Boolean) -> Unit = {},
     sliceStatus: SliceStatus = SliceStatus(null, null, 0f, false),
+    sliceStationCodes: List<String> = emptyList(),
+    sliceCodeA: String? = null,
+    sliceCodeB: String? = null,
+    onSliceCodeA: (String) -> Unit = {},
+    onSliceCodeB: (String) -> Unit = {},
 ) {
     var kpEntry by remember { mutableStateOf(store.kp()) }
     var dstEntry by remember { mutableStateOf(store.dst()) }
@@ -67,17 +80,34 @@ fun HudPanel(
         }
     }
 
-    Column(
-        modifier = modifier
-            .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(10.dp))
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        KpSection(kpEntry)
-        DstSection(dstEntry)
-        FoF2Section(fof2Entry, epochMs)
-        PointSizeSection(pointSize, onPointSizeChange)
-        SliceSection(sliceOn, sliceStatus, onSliceToggle)
+    BoxWithConstraints(modifier = modifier) {
+        // R4.6.1: con la seccion de cortina el panel ya no cabe en pantalla, y
+        // sin scroll la fila del par A-B quedaba inalcanzable (el interruptor
+        // solo se alcanzaba cortando la red para que la lista foF2 encogiera).
+        // El tope de altura deja libres los 132 dp inferiores de la TimeBar.
+        Column(
+            modifier = Modifier
+                .heightIn(max = maxHeight * 0.84f)
+                .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(10.dp))
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            KpSection(kpEntry)
+            DstSection(dstEntry)
+            FoF2Section(fof2Entry, epochMs)
+            PointSizeSection(pointSize, onPointSizeChange)
+            SliceSection(
+                on = sliceOn,
+                status = sliceStatus,
+                codes = sliceStationCodes,
+                codeA = sliceCodeA,
+                codeB = sliceCodeB,
+                onToggle = onSliceToggle,
+                onCodeA = onSliceCodeA,
+                onCodeB = onSliceCodeB,
+            )
+        }
     }
 }
 
@@ -89,7 +119,16 @@ fun HudPanel(
  * aparece cuando la GPU tiene una malla horneada (`App.cpp:5338`).
  */
 @Composable
-private fun SliceSection(on: Boolean, status: SliceStatus, onToggle: (Boolean) -> Unit) {
+private fun SliceSection(
+    on: Boolean,
+    status: SliceStatus,
+    codes: List<String>,
+    codeA: String?,
+    codeB: String?,
+    onToggle: (Boolean) -> Unit,
+    onCodeA: (String) -> Unit,
+    onCodeB: (String) -> Unit,
+) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(
             text = "cortina",
@@ -99,11 +138,55 @@ private fun SliceSection(on: Boolean, status: SliceStatus, onToggle: (Boolean) -
         )
         Switch(checked = on, onCheckedChange = onToggle)
     }
+    // R4.6.1: en Android no hay hover, asi que el par pin+hover del oraculo se
+    // sustituye por dos selectores explicitos. Sin par valido el plan no
+    // hornea y el readout se queda en el prompt (`HudSlice.PIN_PROMPT`).
+    EndpointPicker("A", codes, codeA, onCodeA)
+    EndpointPicker("B", codes, codeB, onCodeB)
     Text(
         text = HudSlice.readout(status.codeA, status.codeB, status.peakLogNe, status.hasData),
         color = SLATE,
         fontSize = 11.sp,
     )
+}
+
+/** Selector compacto de estacion para un extremo de la cortina. */
+@Composable
+private fun EndpointPicker(
+    label: String,
+    codes: List<String>,
+    selected: String?,
+    onSelect: (String) -> Unit,
+) {
+    var open by remember { mutableStateOf(false) }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = label,
+            color = SLATE,
+            fontSize = 11.sp,
+            modifier = Modifier.width(52.dp),
+        )
+        Box {
+            TextButton(
+                onClick = { open = true },
+                enabled = codes.isNotEmpty(),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+            ) {
+                Text(selected ?: "--", color = Color.White, fontSize = 11.sp)
+            }
+            DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+                codes.forEach { code ->
+                    DropdownMenuItem(
+                        text = { Text(code, fontSize = 12.sp) },
+                        onClick = {
+                            open = false
+                            onSelect(code)
+                        },
+                    )
+                }
+            }
+        }
+    }
 }
 
 // ---- Control del tamano de punto (slider 3..15, capa T2) ----
