@@ -45,6 +45,11 @@ android {
     }
 }
 
+// R4.6.6: el CI corre `testDebugUnitTest` y su log no publica cuantos tests
+// corrieron. Este script imprime una linea `RESUMEN-TESTS ...` por tarea de test
+// y falla si no hay resultados que resumir (ver gradle/tests-summary.gradle.kts).
+apply(from = rootProject.file("gradle/tests-summary.gradle.kts"))
+
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
