@@ -73,4 +73,17 @@ class AtmoShaderSourceTest {
         assertTrue(frag.contains("if (tExit <= 0.0) return vec2(0.0);"))
         assertTrue(frag.contains("return vec2(odR, odM);"))
     }
+
+    @Test fun frag_iso_bands_r467() {
+        // R4.6.7 (iso-bands): solo en el raymarch, golden JVM de los umbrales.
+        assertTrue(frag.contains("uniform bool uShowIso;"))
+        assertTrue(frag.contains("uniform vec3 uIsoColor;"))
+        assertTrue(frag.contains("uniform float uIsoStrength;"))
+        assertTrue(frag.contains("const float ISO_BAND_1 = 10.5;"))
+        assertTrue(frag.contains("const float ISO_BAND_2 = 11.0;"))
+        assertTrue(frag.contains("const float ISO_BAND_3 = 11.5;"))
+        assertTrue(frag.contains("float logNe = 10.0 + 4.5 * d;"))
+        assertTrue(frag.contains("if (uShowIso) isoSum += isoB * dt;"))
+        assertTrue(frag.contains("isoSum * uIsoColor * uIsoStrength"))
+    }
 }

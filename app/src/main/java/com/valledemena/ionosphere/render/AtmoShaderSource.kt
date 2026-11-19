@@ -27,6 +27,10 @@ uniform vec3 uCameraPos;
 uniform float uIntensity;
 uniform float uSteps;        // 8..16 (calidad)
 uniform float uLightSteps;   // 3..6
+// R4.6.7 (iso-bands): emision isotropica donde logNe cruza umbrales banda logNe.
+uniform bool uShowIso;
+uniform vec3 uIsoColor;
+uniform float uIsoStrength;
 in vec3 vFragPos;
 out vec4 fragColor;
 
@@ -38,6 +42,9 @@ const float H_M      = ${AtmoShaderConstants.H_M};
 const vec3  BETA_R   = vec3(${AtmoShaderConstants.BETA_R_R}, ${AtmoShaderConstants.BETA_R_G}, ${AtmoShaderConstants.BETA_R_B});
 const float BETA_M   = ${AtmoShaderConstants.BETA_M};
 const float G_MIE    = ${AtmoShaderConstants.G_MIE};
+const float ISO_BAND_1 = ${AtmoShaderConstants.ISO_BAND_1};  // logNe: banda debil
+const float ISO_BAND_2 = ${AtmoShaderConstants.ISO_BAND_2};  // logNe: banda media
+const float ISO_BAND_3 = ${AtmoShaderConstants.ISO_BAND_3};  // logNe: banda intensa
 
 float raySphere(vec3 ro, vec3 rd, float r) {
   float b = dot(ro, rd);
@@ -89,6 +96,7 @@ void main() {
 
   vec3 sumR = vec3(0.0);
   vec3 sumM = vec3(0.0);
+  float isoSum = 0.0;
   float odR = 0.0, odM = 0.0;
 
   for (int i = 0; i < ${AtmoShaderConstants.STEPS_MAX}; i++) {
@@ -98,6 +106,18 @@ void main() {
     float dR = exp(-h / H_R) * dt;
     float dM = exp(-h / H_M) * dt;
     odR += dR; odM += dM;
+
+    // R4.6.7 (iso-bands): logNe crece con la densidad d; atraviesa
+    // umbrales banda logNe (10.5/11/11.5) y emite glow isotropico donde
+    // corre el volumen activo. Por encima de ISO_BAND_3 el glow es 1,
+    // entre ISO_BAND_2 e ISO_BAND_3 0.75, entre ISO_BAND_1 e ISO_BAND_2 0.5.
+    float d = dR + dM;
+    float logNe = 10.0 + 4.5 * d;
+    float isoB = 0.0;
+    if (logNe >= ISO_BAND_3) isoB = 1.0;
+    else if (logNe >= ISO_BAND_2) isoB = 0.75;
+    else if (logNe >= ISO_BAND_1) isoB = 0.5;
+    if (uShowIso) isoSum += isoB * dt;
 
     // planet shadow: the ray to the sun from p must not cross Earth
     float tPlanet = raySphere(p, sun, PLANET_R);
@@ -110,7 +130,7 @@ void main() {
     sumM += dM * att;
   }
 
-  vec3 col = (sumR * BETA_R * phaseR + sumM * BETA_M * phaseM) * uIntensity * ${AtmoShaderConstants.INTENSITY_SCALE};
+  vec3 col = (sumR * BETA_R * phaseR + sumM * BETA_M * phaseM + isoSum * uIsoColor * uIsoStrength) * uIntensity * ${AtmoShaderConstants.INTENSITY_SCALE};
 
   // faint sundisk blended into the limb (redder at dusk via extinction)
   fragColor = vec4(col, 1.0);
