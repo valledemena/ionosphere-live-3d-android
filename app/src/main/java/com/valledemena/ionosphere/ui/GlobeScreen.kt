@@ -175,6 +175,18 @@ fun GlobeScreen(
         }
     }
 
+    // R4.6.2: al apagar la cortina el oraculo vacia el par del usuario
+    // (`App.cpp:5321-5322`) y, como todo el readout vive dentro de
+    // `if (sliceOn)` (`App.cpp:5336`), con la capa apagada no hay linea. Se
+    // limpian solo los codigos del usuario, no el par horneado ni el volumen
+    // del renderer: el oraculo tampoco invalida la malla al desmarcar.
+    LaunchedEffect(sliceOn) {
+        if (!sliceOn) {
+            sliceCodeA = null
+            sliceCodeB = null
+        }
+    }
+
     // R4.6.1: defaults del par A-B cuando llega catalogo. Se mantiene la
     // eleccion del usuario mientras sus codigos sigan existiendo.
     LaunchedEffect(stationCodes) {

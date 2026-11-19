@@ -116,7 +116,13 @@ fun HudPanel(
 /**
  * Toggle de la cortina y su readout. Con la capa encendida y sin volumen en
  * runtime el texto es el prompt del oraculo: la linea `A -> B  pk %.1f` solo
- * aparece cuando la GPU tiene una malla horneada (`App.cpp:5338`).
+ * aparece cuando la GPU tiene una malla horneada (`App.cpp:5338`) **y** el
+ * usuario ha elegido par. Con la capa apagada no se pinta linea
+ * (`App.cpp:5336` mete todo el readout en `if (sliceOn)`).
+ *
+ * R4.6.2: el par que decide la linea es el del usuario (`codeA`/`codeB`), no
+ * `status.codeA/B` (par horneado del renderer). Si se usara el horneado, apagar
+ * y volver a encender mostraria el `pk` anterior en lugar del prompt.
  */
 @Composable
 private fun SliceSection(
@@ -129,6 +135,14 @@ private fun SliceSection(
     onCodeA: (String) -> Unit,
     onCodeB: (String) -> Unit,
 ) {
+    val state = HudSlice.panelState(
+        on = on,
+        codeA = codeA,
+        codeB = codeB,
+        codes = codes,
+        peakLogNe = status.peakLogNe,
+        hasData = status.hasData,
+    )
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(
             text = "cortina",
@@ -141,10 +155,15 @@ private fun SliceSection(
     // R4.6.1: en Android no hay hover, asi que el par pin+hover del oraculo se
     // sustituye por dos selectores explicitos. Sin par valido el plan no
     // hornea y el readout se queda en el prompt (`HudSlice.PIN_PROMPT`).
-    EndpointPicker("A", codes, codeA, onCodeA)
-    EndpointPicker("B", codes, codeB, onCodeB)
+    // R4.6.2: con la capa apagada se deshabilitan, no se ocultan: ocultarlos
+    // cambiaria el alto del panel que R4.6.1 estabilizo.
+    EndpointPicker("A", codes, codeA, state.pickersEnabled, onCodeA)
+    EndpointPicker("B", codes, codeB, state.pickersEnabled, onCodeB)
+    // El hueco del readout se mantiene con la capa apagada (texto vacio) para
+    // que el alto del panel no salte al conmutar; el oraculo tampoco imprime
+    // nada en ese estado.
     Text(
-        text = HudSlice.readout(status.codeA, status.codeB, status.peakLogNe, status.hasData),
+        text = state.line.orEmpty(),
         color = SLATE,
         fontSize = 11.sp,
     )
@@ -156,9 +175,15 @@ private fun EndpointPicker(
     label: String,
     codes: List<String>,
     selected: String?,
+    enabled: Boolean,
     onSelect: (String) -> Unit,
 ) {
     var open by remember { mutableStateOf(false) }
+    // Al deshabilitarse (capa apagada) se cierra el desplegable para no dejar
+    // un menu huerfano abierto.
+    LaunchedEffect(enabled) {
+        if (!enabled) open = false
+    }
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(
             text = label,
@@ -169,12 +194,12 @@ private fun EndpointPicker(
         Box {
             TextButton(
                 onClick = { open = true },
-                enabled = codes.isNotEmpty(),
+                enabled = enabled,
                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
             ) {
                 Text(selected ?: "--", color = Color.White, fontSize = 11.sp)
             }
-            DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            DropdownMenu(expanded = open && enabled, onDismissRequest = { open = false }) {
                 codes.forEach { code ->
                     DropdownMenuItem(
                         text = { Text(code, fontSize = 12.sp) },
