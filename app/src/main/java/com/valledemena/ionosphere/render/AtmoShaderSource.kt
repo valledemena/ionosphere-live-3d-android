@@ -118,7 +118,7 @@ void main() {
     if (logNe >= ISO_BAND_3) isoB = 1.0;
     else if (logNe >= ISO_BAND_2) isoB = 0.75;
     else if (logNe >= ISO_BAND_1) isoB = 0.5;
-    if (uShowIso) isoSum += isoB;
+    if (uShowIso) isoSum += isoB * dt;
 
     // planet shadow: the ray to the sun from p must not cross Earth
     float tPlanet = raySphere(p, sun, PLANET_R);
