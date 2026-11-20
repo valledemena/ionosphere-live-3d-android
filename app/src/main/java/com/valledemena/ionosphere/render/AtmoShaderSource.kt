@@ -107,17 +107,18 @@ void main() {
     float dM = exp(-h / H_M) * dt;
     odR += dR; odM += dM;
 
-    // R4.6.7 (iso-bands): logNe crece con la densidad d; atraviesa
-    // umbrales banda logNe (10.5/11/11.5) y emite glow isotropico donde
-    // corre el volumen activo. Por encima de ISO_BAND_3 el glow es 1,
-    // entre ISO_BAND_2 e ISO_BAND_3 0.75, entre ISO_BAND_1 e ISO_BAND_2 0.5.
-    float d = dR + dM;
-    float logNe = 10.0 + 4.5 * d;
+    // R4.6.7 (iso-bands): logNe sobre odIso, escala aceptada en la acta 0422
+    // (GLM): des-normalizacion del proyecto 8+4.5*x con rango medido max 0.49
+    // (provisional, se declara en el PR). Atraviesa umbrales banda logNe
+    // (10.5/11/11.5): glow 1.0 encima de ISO_BAND_3, 0.75 entre ISO_BAND_2 e
+    // ISO_BAND_3, 0.5 entre ISO_BAND_1 e ISO_BAND_2.
+    float odIso = odR + odM;
+    float logNe = 8.0 + 4.5 * (odIso / 0.49f);
     float isoB = 0.0;
     if (logNe >= ISO_BAND_3) isoB = 1.0;
     else if (logNe >= ISO_BAND_2) isoB = 0.75;
     else if (logNe >= ISO_BAND_1) isoB = 0.5;
-    if (uShowIso) isoSum += isoB * dt;
+    if (uShowIso) isoSum += isoB;
 
     // planet shadow: the ray to the sun from p must not cross Earth
     float tPlanet = raySphere(p, sun, PLANET_R);

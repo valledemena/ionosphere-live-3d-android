@@ -82,8 +82,8 @@ class AtmoShaderSourceTest {
         assertTrue(frag.contains("const float ISO_BAND_1 = 10.5;"))
         assertTrue(frag.contains("const float ISO_BAND_2 = 11.0;"))
         assertTrue(frag.contains("const float ISO_BAND_3 = 11.5;"))
-        assertTrue(frag.contains("float logNe = 10.0 + 4.5 * d;"))
-        assertTrue(frag.contains("if (uShowIso) isoSum += isoB * dt;"))
+        assertTrue(frag.contains("float logNe = 8.0 + 4.5 * (odIso / 0.49f);"))
+        assertTrue(frag.contains("if (uShowIso) isoSum += isoB;"))
         assertTrue(frag.contains("isoSum * uIsoColor * uIsoStrength"))
     }
 }
