@@ -35,4 +35,15 @@ class AtmoShaderConstantsTest {
         eqi(AtmoShaderConstants.LIGHT_STEPS_MIN, 3)
         eqi(AtmoShaderConstants.LIGHT_STEPS_MAX, 6)
     }
+
+    // R4.6.7 (iso-bands): umbrales logNe banda + color/strength golden (D-R4.6.2).
+    @Test fun pins_iso() {
+        eq(AtmoShaderConstants.ISO_BAND_1, 10.5f)
+        eq(AtmoShaderConstants.ISO_BAND_2, 11.0f)
+        eq(AtmoShaderConstants.ISO_BAND_3, 11.5f)
+        eq(AtmoShaderConstants.ISO_STRENGTH, 0.75f)
+        eq(AtmoShaderConstants.ISO_COLOR_R, 0.5f)
+        eq(AtmoShaderConstants.ISO_COLOR_G, 0.85f)
+        eq(AtmoShaderConstants.ISO_COLOR_B, 1.0f)
+    }
 }

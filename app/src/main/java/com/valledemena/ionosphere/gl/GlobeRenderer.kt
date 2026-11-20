@@ -136,10 +136,15 @@ class GlobeRenderer(
     private var uAtmoIntensity = 0
     private var uAtmoSteps = 0
     private var uAtmoLightSteps = 0
+    // R4.6.7 (iso-bands): uniforms del glow (golden por AtmoShaderConstants).
+    private var uShowIso = 0
+    private var uIsoColor = 0
+    private var uIsoStrength = 0
 
     // Rider K3: defaults de pin, override solo si la Activity resolvio un extra en rango.
     private val atmoSteps = atmoStepsOverride ?: AtmoShaderConstants.DEFAULT_STEPS
     private val atmoLightSteps = atmoLightStepsOverride ?: AtmoShaderConstants.DEFAULT_LIGHT_STEPS
+    @Volatile private var showIso = false  // R4.6.7: showIso=false por defecto (D-R4.6.2)
 
     private val projection = FloatArray(16)
     private val view = FloatArray(16)
@@ -226,6 +231,12 @@ class GlobeRenderer(
         GLES20.glUniform1f(uAtmoIntensity, 1.0f)
         GLES20.glUniform1f(uAtmoSteps, atmoSteps.toFloat())
         GLES20.glUniform1f(uAtmoLightSteps, atmoLightSteps.toFloat())
+        // R4.6.7 (iso-bands): uniforms nuevos + golden por pins.
+        uShowIso = GLES20.glGetUniformLocation(atmoProgram, "uShowIso")
+        uIsoColor = GLES20.glGetUniformLocation(atmoProgram, "uIsoColor")
+        uIsoStrength = GLES20.glGetUniformLocation(atmoProgram, "uIsoStrength")
+        GLES20.glUniform3f(uIsoColor, AtmoShaderConstants.ISO_COLOR_R, AtmoShaderConstants.ISO_COLOR_G, AtmoShaderConstants.ISO_COLOR_B)
+        GLES20.glUniform1f(uIsoStrength, AtmoShaderConstants.ISO_STRENGTH)
         GLES20.glUseProgram(0)
         textureId = uploadTextureFromAsset("earth-day.jpg", srgb = true)
             ?: uploadTexture(PlaceholderGlobeTexture.TIER_MEDIUM_WIDTH, PlaceholderGlobeTexture.TIER_MEDIUM_HEIGHT)
@@ -372,6 +383,9 @@ class GlobeRenderer(
             GLES20.glUniformMatrix4fv(uAtmoMvp, 1, false, viewProjection, 0)
             GLES20.glUniformMatrix4fv(uAtmoModel, 1, false, IDENTITY_MATRIX, 0)
             pushSunCamera(uAtmoSunDir, uAtmoCameraPos)
+            // R4.6.7 (iso-bands): glow apagado por defecto; solo activo con
+            // showIso y volumen activo (sin volumen ON el glow no corre).
+            GLES20.glUniform1i(uShowIso, if (showIso && sliceVolume != null) 1 else 0)
 
             GLES20.glEnable(GLES20.GL_BLEND)
             GLES20.glBlendFunc(GLES20.GL_ONE, GLES20.GL_ONE)
@@ -707,6 +721,18 @@ class GlobeRenderer(
     fun setShowSlice(show: Boolean) {
         sliceShow = show
     }
+
+    /**
+     * R4.6.7 (iso-bands): activa/desactiva el glow de bandas en el raymarch
+     * del shell atmosferico. Por defecto off (D-R4.6.2). UI deshabilitada sin
+     * volumen activo (`sliceVolume != null`): el glow apaga aunque sea `true`.
+     */
+    fun setShowIso(show: Boolean) {
+        showIso = show
+    }
+
+    /** R4.6.7: estado del glow de bandas (UI de disable sin volumen ON). */
+    fun isShowIso(): Boolean = showIso
 
     /**
      * R4.5 P4b: volumen activo para la cortina. `null` = no hay volumen en

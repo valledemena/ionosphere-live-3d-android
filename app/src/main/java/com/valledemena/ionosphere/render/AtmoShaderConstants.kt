@@ -22,4 +22,13 @@ object AtmoShaderConstants {
     const val STEPS_MAX = 16
     const val LIGHT_STEPS_MIN = 3
     const val LIGHT_STEPS_MAX = 6
+
+    // R4.6.7 (iso-bands): umbrales logNe de banda + color/strength golden (D-R4.6.2).
+    const val ISO_BAND_1 = 10.5f   // banda externa (dDebil)
+    const val ISO_BAND_2 = 11.0f
+    const val ISO_BAND_3 = 11.5f   // banda interna (fuerte)
+    const val ISO_STRENGTH = 0.75f  // intensidad golden del glow (uIsoStrength)
+    const val ISO_COLOR_R = 0.5f
+    const val ISO_COLOR_G = 0.85f
+    const val ISO_COLOR_B = 1.0f
 }
