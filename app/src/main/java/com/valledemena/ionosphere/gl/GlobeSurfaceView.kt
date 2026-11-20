@@ -87,6 +87,8 @@ class GlobeSurfaceView @JvmOverloads constructor(
         setRenderer(renderer)
         renderMode = RENDERMODE_WHEN_DIRTY
         renderer.onStationPick = { code -> post { onStationPick?.invoke(code) } }
+        // R4.6.3: retornos por cambio de estado del volumen (OFF => sin frame).
+        renderer.onRenderRequest = { requestRender() }
     }
 
     /** R3.4: alimenta la capa de puntos; no hay fetch propio. */
@@ -121,6 +123,34 @@ class GlobeSurfaceView @JvmOverloads constructor(
 
     /** R4.5 P4b: estado del readout de la cortina (codigos, pico y si hay malla). */
     fun sliceStatus(): SliceStatus = renderer.sliceStatus()
+
+    /** R4.6.3 (density + chapman): enciende/apaga el pase volumetrico. */
+    fun setShowVolume(show: Boolean) {
+        renderer.setShowVolume(show)
+    }
+
+    /** R4.6.3: conmuta entre density y chapman sin recompilar. */
+    fun setVolumeMode(mode: com.valledemena.ionosphere.render.VolumeMode) {
+        renderer.setVolumeMode(mode)
+    }
+
+    /** R4.6.3: coste del volumen (16..64 pasos; ref 64). */
+    fun setVolumeQuality(quality: com.valledemena.ionosphere.render.VolumeQuality) {
+        renderer.setVolumeQuality(quality)
+    }
+
+    /** R4.6.3: opacidad del volumen (clamp [0,3]). */
+    fun setVolumeOpacity(v: Float) {
+        renderer.setVolumeOpacity(v)
+    }
+
+    /** R4.6.3: habilita el pase con un volumen nuevo. */
+    fun setVolume(volume: DensityVolume?) {
+        renderer.setVolume(volume)
+    }
+
+    /** R4.6.3: estado del volumen para el HUD. */
+    fun volumeStatus(): com.valledemena.ionosphere.render.VolumeStatus = renderer.volumeStatus()
 
     /** Empieza a pedir frames. Idempotente. */
     fun start() {
@@ -214,7 +244,10 @@ class GlobeSurfaceView @JvmOverloads constructor(
         stop()
         // R4.5 P4b: la capa de la cortina se libera en el hilo GL, que sigue
         // vivo en este punto; si ya no lo estuviera, `queueEvent` no hace nada.
-        queueEvent { renderer.disposeSliceLayer() }
+        queueEvent {
+            renderer.disposeSliceLayer()
+            renderer.disposeVolumeLayer()
+        }
         velocityTracker?.recycle()
         velocityTracker = null
         super.onDetachedFromWindow()

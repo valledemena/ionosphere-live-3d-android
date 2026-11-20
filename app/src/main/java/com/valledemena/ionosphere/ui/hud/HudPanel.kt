@@ -39,6 +39,9 @@ import com.valledemena.ionosphere.data.model.IonosondeData
 import com.valledemena.ionosphere.data.model.SpaceWeatherData
 import com.valledemena.ionosphere.data.net.Outcome
 import com.valledemena.ionosphere.render.SliceStatus
+import com.valledemena.ionosphere.render.VOLUME_VISIBLE_DEFAULT
+import com.valledemena.ionosphere.render.VolumeMode
+import com.valledemena.ionosphere.render.VolumeStatus
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
@@ -64,6 +67,11 @@ fun HudPanel(
     sliceCodeB: String? = null,
     onSliceCodeA: (String) -> Unit = {},
     onSliceCodeB: (String) -> Unit = {},
+    volumeStatus: VolumeStatus = VolumeStatus(showVolume = VOLUME_VISIBLE_DEFAULT, hasData = false),
+    volumeOn: Boolean = VOLUME_VISIBLE_DEFAULT,
+    volumeMode: VolumeMode = VolumeMode.DENSITY,
+    onVolumeToggle: (Boolean) -> Unit = {},
+    onVolumeMode: (VolumeMode) -> Unit = {},
 ) {
     var kpEntry by remember { mutableStateOf(store.kp()) }
     var dstEntry by remember { mutableStateOf(store.dst()) }
@@ -106,6 +114,13 @@ fun HudPanel(
                 onToggle = onSliceToggle,
                 onCodeA = onSliceCodeA,
                 onCodeB = onSliceCodeB,
+            )
+            VolumeSection(
+                status = volumeStatus,
+                on = volumeOn,
+                mode = volumeMode,
+                onToggle = onVolumeToggle,
+                onMode = onVolumeMode,
             )
         }
     }
@@ -167,6 +182,66 @@ private fun SliceSection(
         color = SLATE,
         fontSize = 11.sp,
     )
+}
+
+// ---- Seccion volumen Ne(h) (R4.6.3 density + chapman) ----
+
+/**
+ * Interruptor del pase volumetrico + pestañas de modo (`density`/`capas`).
+ *
+ * Los botones de modo quedan deshabilitados mientras el pase esta off: no
+ * hay datos para colorear, y el cambio de pestaña sin volumen seria un
+ * conmutador sin efecto. Con el pase on, el `HudVolume.hint` muestra que la
+ * textura ya esta residente en la GPU.
+ */
+@Composable
+private fun VolumeSection(
+    status: VolumeStatus,
+    on: Boolean,
+    mode: VolumeMode,
+    onToggle: (Boolean) -> Unit,
+    onMode: (VolumeMode) -> Unit,
+) {
+    val state = HudVolume.state(status, on)
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = "volumen",
+            color = SLATE,
+            fontSize = 11.sp,
+            modifier = Modifier.width(52.dp),
+        )
+        Switch(checked = on, onCheckedChange = onToggle)
+    }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = state.hint.orEmpty(),
+            color = if (state.hint != null) Color.White else SLATE,
+            fontSize = 11.sp,
+            modifier = Modifier.width(52.dp),
+        )
+        TextButton(
+            onClick = { onMode(VolumeMode.DENSITY) },
+            enabled = state.modeEnabled,
+            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+        ) {
+            Text(
+                text = VolumeMode.DENSITY.hudLabel(),
+                color = if (mode == VolumeMode.DENSITY) Color.White else SLATE,
+                fontSize = 11.sp,
+            )
+        }
+        TextButton(
+            onClick = { onMode(VolumeMode.CHAPMAN) },
+            enabled = state.modeEnabled,
+            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+        ) {
+            Text(
+                text = VolumeMode.CHAPMAN.hudLabel(),
+                color = if (mode == VolumeMode.CHAPMAN) Color.White else SLATE,
+                fontSize = 11.sp,
+            )
+        }
+    }
 }
 
 /** Selector compacto de estacion para un extremo de la cortina. */
