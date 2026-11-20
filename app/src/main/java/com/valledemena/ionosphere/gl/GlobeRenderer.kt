@@ -21,6 +21,14 @@ import com.valledemena.ionosphere.render.GodRaysPass
 import com.valledemena.ionosphere.render.SLICE_VISIBLE_DEFAULT
 import com.valledemena.ionosphere.render.SliceEndpoints
 import com.valledemena.ionosphere.render.SliceStatus
+import com.valledemena.ionosphere.render.VOLUME_OPACITY_DEFAULT
+import com.valledemena.ionosphere.render.VOLUME_VISIBLE_DEFAULT
+import com.valledemena.ionosphere.render.VolumeMode
+import com.valledemena.ionosphere.render.VolumeQuality
+import com.valledemena.ionosphere.render.VolumeStatus
+import com.valledemena.ionosphere.render.planSliceFrame
+import com.valledemena.ionosphere.render.planVolumeFrame
+import com.valledemena.ionosphere.render.volumeOpacityClamp
 import com.valledemena.ionosphere.render.planSliceFrame
 import com.valledemena.ionosphere.data.model.IonosondeData
 import com.valledemena.ionosphere.render.STATION_POINT_REF
@@ -171,6 +179,21 @@ class GlobeRenderer(
     private var sliceForce = false
     @Volatile private var slicePeakLogNe = 0.0f
 
+    /** Invitado al dueño de ciclo de vida para pedir frames (R4.6.3: `requestRender`). */
+    var onRenderRequest: (() -> Unit)? = null
+
+    // R4.6.3 (density + chapman): pase volumetrico, apagado por defecto. El
+    // volumen es el mismo que alimenta la cortina; la textura 3D se sube una
+    // sola vez por volumen (clave = huella) y con el interruptor OFF no hay ni
+    // subida ni draw. El coste lo gobierna `volumeQuality`, nunca la atmosfera.
+    private var volumeLayer: VolumeLayerRenderer? = null
+    @Volatile private var volumeShow = VOLUME_VISIBLE_DEFAULT
+    @Volatile private var volumeMode = VolumeMode.DENSITY
+    @Volatile private var volumeQuality = VolumeQuality.HIGH
+    @Volatile private var volumeOpacity = VOLUME_OPACITY_DEFAULT
+    @Volatile private var volume: DensityVolume? = null
+    private var volumeKey: String? = null
+
     private data class PickRequest(val x: Float, val y: Float, val width: Int, val height: Int)
 
     private var frameCount = 0
@@ -221,6 +244,9 @@ class GlobeRenderer(
         // malla horneada se da por perdida (`slicePair = null`, `force`).
         sliceLayer?.dispose()
         sliceLayer = SliceLayerRenderer().also { it.init() }
+        volumeLayer?.dispose()
+        volumeLayer = VolumeLayerRenderer().also { it.init() }
+        volumeKey = null
         slicePair = null
         slicePeakLogNe = 0.0f
         sliceForce = sliceVolume != null
@@ -371,6 +397,10 @@ class GlobeRenderer(
         // de la atmosfera (bloque de capas de datos del oraculo, `App.cpp:4539`).
         drawSlice()
 
+        // R4.6.3: volumen despues de la cortina y antes de la atmosfera (bloque
+        // de capas de datos del oraculo). Apagado por defecto: no toca GL.
+        drawVolume()
+
         if (drawAtmosphere) {
             // Pase del shell (atmosfera): aditivo, BackSide espejado con cull front,
             // sin escribir z (mirror de web builders.ts L122-138). Restauracion completa
@@ -459,6 +489,36 @@ class GlobeRenderer(
         // malla anterior cuando el par deja de ser valido.
         if (!sliceShow || !layer.hasData()) return
         layer.draw(mvp, SLICE_OPACITY_DEFAULT)
+    }
+
+    /**
+     * R4.6.3 (density + chapman): planifica y dibuja el pase volumetrico Ne(h)
+     * (espejo de `VolumeRenderer::render`).
+     *
+     * El plan es puro (`render/VolumeLayerPlan.kt`). El volumen apagado da
+     * `upload == null && draw == null`: ni textura subida ni draw (cero
+     * coste). Con `volume != null` pero plan sin upload y sin draw (volumen
+     * nulo/invalido o sin textura residency), `hasData()` de la capa conserva
+     * lo anterior (igual que la cortina).
+     */
+    private fun drawVolume() {
+        val layer = volumeLayer ?: return
+        val plan = planVolumeFrame(
+            showVolume = volumeShow,
+            volume = volume,
+            uploadedKey = volumeKey,
+            hasData = layer.hasData(),
+            mode = volumeMode,
+            quality = volumeQuality,
+            opacity = volumeOpacity,
+        )
+        val upload = plan.upload
+        if (upload != null) {
+            layer.upload(upload)
+            volumeKey = upload.fingerprint
+        }
+        val draw = plan.draw ?: return
+        layer.draw(draw, viewProjection, cameraEye, sunDir)
     }
 
     /**
@@ -735,6 +795,49 @@ class GlobeRenderer(
     fun isShowIso(): Boolean = showIso
 
     /**
+     * R4.6.3 (density + chapman): enciende/apaga el pase volumetrico. Por
+     * defecto off (`VolumeRenderer.h`, `visible=false`).
+     */
+    fun setShowVolume(show: Boolean) {
+        if (volumeShow == show) return
+        volumeShow = show
+        requestFrame()
+    }
+
+    /** R4.6.3: conmuta entre `DENSITY` y `CHAPMAN` sin recompilar (uniform). */
+    fun setVolumeMode(mode: VolumeMode) {
+        if (volumeMode == mode) return
+        volumeMode = mode
+        requestFrame()
+    }
+
+    /** R4.6.3: variable de coste del volumen (16..64 pasos; ref=64). */
+    fun setVolumeQuality(quality: VolumeQuality) {
+        if (volumeQuality == quality) return
+        volumeQuality = quality
+        requestFrame()
+    }
+
+    /** R4.6.3: opacidad del volumen clamp [0,3] (`volumeOpacityClamp`). */
+    fun setVolumeOpacity(v: Float) {
+        if (volumeOpacity == volumeOpacityClamp(v)) return
+        volumeOpacity = volumeOpacityClamp(v)
+        requestFrame()
+    }
+
+    /** R4.6.3: habilita el pase con una nueva textura 3D en pocos frames. */
+    fun setVolume(volume: DensityVolume?) {
+        if (this.volume === volume) return
+        this.volume = volume
+    }
+
+    /** R4.6.3: estado del volumen para el HUD. */
+    fun volumeStatus(): VolumeStatus = VolumeStatus(
+        showVolume = volumeShow,
+        hasData = volumeLayer?.hasData() == true,
+    )
+
+    /**
      * R4.5 P4b: volumen activo para la cortina. `null` = no hay volumen en
      * runtime (estado de R4.5: R4.4 entrego el volumen puro y nadie lo cablea
      * todavia). Un volumen nuevo fuerza rehorneado, como `rebuildSlice(true)`
@@ -769,6 +872,17 @@ class GlobeRenderer(
         sliceLayer = null
         slicePair = null
         slicePeakLogNe = 0.0f
+    }
+
+    /** R4.6.3: libera el pase volumetrico. Idempotente sin GL si ya estaba liberada. */
+    fun disposeVolumeLayer() {
+        volumeLayer?.dispose()
+        volumeLayer = null
+        volumeKey = null
+    }
+
+    private fun requestFrame() {
+        onRenderRequest?.invoke()
     }
 
     /** R3.4: encola un tap; la proyeccion se resuelve en el hilo GL. */

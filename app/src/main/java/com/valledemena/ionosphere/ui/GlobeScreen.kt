@@ -38,6 +38,10 @@ import com.valledemena.ionosphere.ui.hud.HudStore
 import com.valledemena.ionosphere.ui.hud.StationPopup
 import com.valledemena.ionosphere.ui.hud.StationPopupModel
 import com.valledemena.ionosphere.ui.hud.TimeBar
+import com.valledemena.ionosphere.render.VolumeMode
+import com.valledemena.ionosphere.render.VolumeQuality
+import com.valledemena.ionosphere.render.VolumeStatus
+import com.valledemena.ionosphere.render.VOLUME_VISIBLE_DEFAULT
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -82,6 +86,10 @@ fun GlobeScreen(
     // el prompt del oraculo.
     var sliceCodeA by remember { mutableStateOf<String?>(null) }
     var sliceCodeB by remember { mutableStateOf<String?>(null) }
+    // R4.6.3 (density + chapman): pase volumetrico, apagado por defecto.
+    var volumeOn by remember { mutableStateOf(VOLUME_VISIBLE_DEFAULT) }
+    var volumeMode by remember { mutableStateOf(VolumeMode.DENSITY) }
+    var volumeStatus by remember { mutableStateOf(VolumeStatus(VOLUME_VISIBLE_DEFAULT, false)) }
     val data = payloadOf(fof2Entry)
     val sceneEpochMs = replayEpochMs(nowMs, replaySettings)
     val solarEpochMs = solarEpochForScene(nowMs, replaySettings)
@@ -221,15 +229,33 @@ fun GlobeScreen(
         surfaceView.setSliceEndpoints(endpoints)
     }
 
+    // R4.6.3: interruptor + conmutador de modos del volumen; conmutar sin
+    // textura residente es sin efecto, asi que la conmutacion queda deshabilitada
+    // desde el HUD (D-R4.6.3: "conmutacion en runtime sin recompilar").
+    LaunchedEffect(view, volumeOn) {
+        val surfaceView = view ?: return@LaunchedEffect
+        surfaceView.setShowVolume(volumeOn)
+        while (true) {
+            volumeStatus = surfaceView.volumeStatus()
+            delay(1_000L)
+        }
+    }
+
+    LaunchedEffect(view, volumeMode, volumeOn) {
+        val surfaceView = view ?: return@LaunchedEffect
+        surfaceView.setVolumeMode(volumeMode)
+    }
+
     // R4.6.1: volumen Ne(h) vivo desde las ionosondas. Se rehornea solo al
     // cambiar el payload o al cruzar un escalon solar de 10 min: 72x72x48
     // celdas no caben en el hilo de UI, y el Sol se mueve despacio. Apagada la
     // capa no se construye nada (delta ON/OFF limpio para el protocolo R4.6.5).
     val solarVolumeStepMs = sliceVolumeSolarStepMs(nowMs, solarEpochMs)
-    LaunchedEffect(view, sliceOn, data, solarVolumeStepMs) {
+    LaunchedEffect(view, sliceOn, volumeOn, data, solarVolumeStepMs) {
         val surfaceView = view ?: return@LaunchedEffect
-        if (!sliceOn || data == null) {
+        if ((!sliceOn && !volumeOn) || data == null) {
             surfaceView.setSliceVolume(null)
+            surfaceView.setVolume(null)
             return@LaunchedEffect
         }
         val sun = SolarPosition.directionAt(solarVolumeStepMs).map { it.toDouble() }.toDoubleArray()
@@ -238,6 +264,8 @@ fun GlobeScreen(
             buildVolumeFromStations(data.stations, sun, solarVolumeStepMs / 1000L, f107)
         }
         surfaceView.setSliceVolume(volume)
+        // R4.6.3: el pase raymarche por el mismo volumen; apagado, lo vacia.
+        surfaceView.setVolume(if (volumeOn) volume else null)
     }
 
     // R4.2: mismo intervalo que el oráculo (500 ms, dt = 0.5). El efecto no se
@@ -292,6 +320,11 @@ fun GlobeScreen(
                 sliceCodeB = sliceCodeB,
                 onSliceCodeA = { sliceCodeA = it },
                 onSliceCodeB = { sliceCodeB = it },
+                volumeOn = volumeOn,
+                volumeMode = volumeMode,
+                volumeStatus = volumeStatus,
+                onVolumeToggle = { volumeOn = it },
+                onVolumeMode = { volumeMode = it },
                 modifier = Modifier
                     .align(Alignment.TopStart)
                     .padding(10.dp),
