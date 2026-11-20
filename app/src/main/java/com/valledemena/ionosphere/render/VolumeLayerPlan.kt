@@ -87,12 +87,21 @@ data class VolumeStatus(
     val hasData: Boolean,
 )
 
-/** Radio del planeta en km (para el radio exterior de la esfera proxy). */
+/** Radio del planeta en km (para los radios del proxy del volumen). */
 const val PLANET_R_KM = 6371.0
 
 /** Radio exterior de la esfera proxy: 500 km sobre el radio del planeta. */
 fun volumeOuterRadius(altMaxKm: Double): Float =
     (AtmoShaderConstants.PLANET_R + (altMaxKm / PLANET_R_KM)).toFloat()
+
+/**
+ * Radio interior de la esfera proxy: planeta + `altMinKm` (60 km), espejo
+ * C++ `VolumeRenderer.cpp:257` (`1 + altMinKm/6371`, `explode_ = 1.0`). El
+ * shader mapea `altNorm = (r - uInnerR)/(uOuterR - uInnerR)` en [0,1] = alt
+ * 60..500 km.
+ */
+fun volumeInnerRadius(altMinKm: Double): Float =
+    (AtmoShaderConstants.PLANET_R + (altMinKm / PLANET_R_KM)).toFloat()
 
 /**
  * Huella del volumen para decidir si la textura 3D debe subirse de nuevo.

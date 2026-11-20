@@ -168,9 +168,15 @@ class VolumeLayerPlanTest {
     }
 
     @Test
-    fun `G7c_10 radio exterior del proxy`() {
-        // 0.0785131 km/km-division: 60? no: 500 km sobre 6371 km.
+    fun `G7c_10 radios del proxy (espejo C++ VolumeRenderer)`() {
+        // Radio exterior: 500 km sobre el planeta (espejo C++ L256).
         assertEquals(AtmoShaderConstants.PLANET_R + 500.0 / PLANET_R_KM, volumeOuterRadius(500.0).toDouble(), 1e-5)
+        // Radio interior: planeta + altMin 60 km (espejo C++ L257, explode_=1):
+        // altNorm=0 <=> r = uInnerR, o sea que el volumen cubre alt 60..500 km
+        // sin desplazamiento vertical (R1).
+        assertEquals(AtmoShaderConstants.PLANET_R + 60.0 / PLANET_R_KM, volumeInnerRadius(60.0).toDouble(), 1e-6)
+        assertEquals(1.00942, volumeInnerRadius(60.0).toDouble(), 1e-5)
+        assertEquals(1.07848, volumeOuterRadius(500.0).toDouble(), 1e-5)
     }
 
     // ---- packing (byte-identico a densityVolume.ts / builders.ts) ----

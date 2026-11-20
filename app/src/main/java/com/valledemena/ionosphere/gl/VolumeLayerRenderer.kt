@@ -5,12 +5,15 @@ import android.opengl.GLES30
 import android.util.Log
 import com.valledemena.ionosphere.core.SphereMesh
 import com.valledemena.ionosphere.core.iono.VOL_ALT_MAX_KM
+import com.valledemena.ionosphere.core.iono.VOL_ALT_MAX_KM
+import com.valledemena.ionosphere.core.iono.VOL_ALT_MIN_KM
 import com.valledemena.ionosphere.render.AtmoShaderConstants
 import com.valledemena.ionosphere.render.Colormaps
 import com.valledemena.ionosphere.render.VolumeShaderSource
 import com.valledemena.ionosphere.render.VolumeUpload
 import com.valledemena.ionosphere.render.VolumeDraw
 import com.valledemena.ionosphere.render.VOL_STEPS_MAX
+import com.valledemena.ionosphere.render.volumeInnerRadius
 import com.valledemena.ionosphere.render.volumeOuterRadius
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -70,11 +73,20 @@ internal class VolumeLayerRenderer {
     /** `true` si el dispose ya se ejecuto. */
     fun isDisposed(): Boolean = guard.disposed
 
-    /** Radio exterior de la esfera proxy: 500 km sobre el radio del planeta. */
+    /**
+     * Radio exterior de la esfera proxy: 500 km sobre el radio del planeta
+     * (espejo C++ `VolumeRenderer.cpp:256`).
+     */
     val outerRadius: Float = volumeOuterRadius(VOL_ALT_MAX_KM)
 
-    /** Radio interior: la superficie del planeta (la marcha entra desde ahi). */
-    val innerRadius: Float = AtmoShaderConstants.PLANET_R
+    /**
+     * Radio interior: superficie del planeta + `altMinKm` (60 km), espejo
+     * C++ `VolumeRenderer.cpp:257` (`innerR = 1 + (altMinKm_/6371)*explode_`,
+     * `explode_ = 1.0`). El shader mapea `altNorm = (r - uInnerR)/(uOuterR -
+     * uInnerR)`, asi el volumen cubre alt 60..500 km sin desplazamiento
+     * vertical (G7c_10).
+     */
+    val innerRadius: Float = volumeInnerRadius(VOL_ALT_MIN_KM)
 
     fun init() {
         program = ShaderProgram.create(VolumeShaderSource.VOLUME_VERT, VolumeShaderSource.VOLUME_FRAG)
