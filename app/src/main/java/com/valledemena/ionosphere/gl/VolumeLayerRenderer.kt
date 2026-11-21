@@ -65,7 +65,7 @@ internal class VolumeLayerRenderer {
     private var uDensity = -1
     private var uLayer = -1
     private var uColormap = -1
-    private var aPos = -1
+    private var aPosition = -1
 
     /** `true` cuando la textura 3D esta subida (`VolumeRenderer::hasData`). */
     fun hasData(): Boolean = hasData
@@ -102,7 +102,9 @@ internal class VolumeLayerRenderer {
         uDensity = GLES20.glGetUniformLocation(program, "uDensity")
         uLayer = GLES20.glGetUniformLocation(program, "uLayer")
         uColormap = GLES20.glGetUniformLocation(program, "uColormap")
-        aPos = GLES20.glGetAttribLocation(program, "aPos")
+        // FIX r4.6.5: el vertex shader declara `in vec3 aPosition` (VolumeShaderSource.VOLUME_VERT);
+        // pedir "aPos" daba -1 y dejaba el atributo a (0,0,0): triangulos degenerados, 0 fragmentos.
+        aPosition = GLES20.glGetAttribLocation(program, "aPosition")
 
         // Esfera proxy a radio exterior: el vertice ya vive en coordenadas mundo.
         val mesh = SphereMesh.unitSphere(rings = 48, segments = 96)
@@ -121,8 +123,8 @@ internal class VolumeLayerRenderer {
             positions.toFloatBuffer(),
             GLES20.GL_STATIC_DRAW,
         )
-        GLES20.glEnableVertexAttribArray(aPos)
-        GLES20.glVertexAttribPointer(aPos, 3, GLES20.GL_FLOAT, false, 0, 0)
+        GLES20.glEnableVertexAttribArray(aPosition)
+        GLES20.glVertexAttribPointer(aPosition, 3, GLES20.GL_FLOAT, false, 0, 0)
         GLES20.glBindBuffer(GLES20.GL_ELEMENT_ARRAY_BUFFER, ebo)
         GLES20.glBufferData(
             GLES20.GL_ELEMENT_ARRAY_BUFFER,
