@@ -1,9 +1,10 @@
 # ADR R4.7 — Decisión NDK-MSIS
 
-> Estado: **PROPUESTA — pendiente de decisión explícita de David y dictamen de GLM**.
-> Fecha: 2026-11-21. Preparado en el repo raiz; destino final una vez aprobado:
-> `docs/r4/ADR-NDK-MSIS.md` en `valledemena/ionosphere-live-3d-android`
-> (PR docs-only, sin código). No se ha publicado ni enviado a GLM.
+> Estado: **ACEPTADA** — decisión firmada por David (`to-glm/0446`, relay
+> `ce0b617`) y dictamen E7 FAVORABLE de GLM (`from-glm/0438`, relay
+> `ebbdd05`); verificación mecánica conforme (`from-glm/0439`). Publicada
+> como PR #59 docs-only en `docs/r4/ADR-NDK-MSIS.md`.
+> Fecha: 2026-11-21 (preparación); 2026-11-22 (aceptación y publicación).
 
 ## 1. Contexto
 
@@ -47,8 +48,8 @@ cerrados. La tabla de riesgos del plan añade: "NDK-MSIS entra sin licencia
    7,85 % del radio pre-registrado desde el C++. Señal/control **46,2x y
    45,2x** en dos ciclos, OFF con **0 píxeles viridis**, VLM conforme en
    ambos limbos, y comportamiento nocturno más débil (+95..+166 frente a
-   +226 diurno) idéntico al oráculo. La capa se ve y coincide con el C++
-   sin una sola línea nativa.
+   +226 diurno) con el mismo comportamiento que el oráculo. La capa se ve
+   y coincide con el C++ en los aspectos medidos, sin una sola línea nativa.
 3. **Paridad de coste, verificada.** `steps_ = 64` por defecto en C++
    (`VolumeRenderer.h:59`) y `VolumeQuality.HIGH = VOL_STEPS_REF = 64` en
    el puerto (`GlobeRenderer.kt:192`). GLM dictaminó que "el coste ON es
@@ -76,8 +77,9 @@ cerrados. La tabla de riesgos del plan añade: "NDK-MSIS entra sin licencia
 
 ## 5. Consecuencias
 
-- E7 queda satisfecho con "decisión NO NDK + licencia N/A" once David firme
-  y GLM dicte.
+- E7 quedó satisfecha con la decisión NO NDK + licencia N/A: firmada por
+  David (`to-glm/0446`) y dictaminada por GLM (`from-glm/0438`, verificación
+  `from-glm/0439`).
 - R4.8 puede arrancar sin compilers nativos: solo paridad de replay y
   informe de batería de 30 min.
 - Quedan como deudas declaradas, **no como motivos para NDK**:
@@ -90,11 +92,11 @@ cerrados. La tabla de riesgos del plan añade: "NDK-MSIS entra sin licencia
 
 | Requisito del plan | Estado |
 |---|---|
-| Decisión explícita de David | **Pendiente** |
-| Dictamen de GLM | **Pendiente** (no enviado; David eligió cerrar la relación en R4.6.5) |
+| Decisión explícita de David | **Cumplido** (`to-glm/0446`, «firmo», `ce0b617`) |
+| Dictamen de GLM | **Cumplido** (FAVORABLE condicionado, `from-glm/0438`, `ebbdd05`; verificación `from-glm/0439`) |
 | Licencia declarada | **N/A — sin dependencia nativa** |
 | Ninguna dependencia nativa entra sin ADR | **Cumplido** (no entra ninguna) |
-| Publicación como PR docs-only con CI 3/3 | **Pendiente de GO para publicar** |
+| Publicación como PR docs-only con CI 3/3 | **Cumplido** (PR #59, head `04f69c3`, CI `44939864097` 3/3) |
 | Sin código, sin `data/**`, sin `.github/**`, sin checker | **Cumplido por construcción** |
 
 ## 7. Referencias
