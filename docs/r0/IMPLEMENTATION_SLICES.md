@@ -37,3 +37,15 @@ Endurecimiento perf/energía, auto-tier de texturas por dispositivo, AAB/APK fir
 
 **Primero**: R1 + R2 — globo + foF2/Kp/Dst reales con degradación honesta. Ya es una app útil y verificable.
 **Esperan**: profundidad de R4 (raymarch, cortina), todo R5 (satélites, WSPR, lightning, magnetosfera…) y R6.
+
+
+## Addenda — estado del plan (2026-11-22, decisión de David, acta `0448`)
+
+R4 quedó cerrada (acta `0446`, merge `6cbb796`, CI `44971098915` 3/3).
+R5 **se mantiene** en el roadmap y queda **diferida** hasta la reanudación de
+Android, que seguirá a la reforma previa de la app desktop C++ y de la app web
+(track **DW**, con pre-registro por slice y el mismo gate que R4). Android
+queda aparcado con `main` congelado en `6cbb796`, salvo PRs docs-only de
+estado y decisión explícita de David. R6 se ejecuta ahora como release del
+estado verificado desde `6cbb796`, según decisión de David del mismo día.
+El detalle y las baselines están en `docs/TASKS.md`, sección «Estado del plan».
